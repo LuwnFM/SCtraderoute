@@ -145,7 +145,7 @@ function recalcRoute(route, shipScu, investment) {
       finiteOr(route.maxDemandScu, shipScu)
     ];
 
-    const loadScu = Math.max(0, Math.min(...caps));
+    const loadScu = Math.max(0, Math.floor(Math.min(...caps)));
     const investmentRequired = loadScu * route.buyPrice;
     const profit = loadScu * route.profitPerScu;
     const distanceGm = numeric(route.distanceGm);
@@ -388,7 +388,7 @@ function calculateLocalCsvRoutes(listings) {
         const profitPerScu = destination.price - origin.price;
         if (profitPerScu <= 0) continue;
         const maxByInvestment = investment > 0 ? investment / origin.price : shipScu;
-        const loadScu = Math.max(0, Math.min(shipScu, origin.quantity, destination.quantity, maxByInvestment));
+        const loadScu = Math.max(0, Math.floor(Math.min(shipScu, origin.quantity, destination.quantity, maxByInvestment)));
         if (loadScu <= 0) continue;
         const investmentRequired = loadScu * origin.price;
         const profit = loadScu * profitPerScu;
