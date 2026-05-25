@@ -95,8 +95,8 @@ function renderMeta() {
 }
 
 function render() {
-  const shipScu = numberFromInput(els.shipScu, state.data?.meta?.params?.shipScu ?? 128);
-  const investment = numberFromInput(els.investment, state.data?.meta?.params?.investment ?? 1_000_000);
+  const shipScu = wholeScu(numberFromInput(els.shipScu, state.data?.meta?.params?.shipScu ?? 128));
+  const investment = Math.floor(numberFromInput(els.investment, state.data?.meta?.params?.investment ?? 1_000_000));
   const source = els.sourceFilter.value;
   const commodityNeedle = els.commoditySearch.value.trim().toLowerCase();
   const locationNeedle = els.locationSearch.value.trim().toLowerCase();
@@ -136,18 +136,21 @@ function render() {
 
 function recalcRoute(route, shipScu, investment) {
   // SC Trade Tools crowdsource rows have profitPerScu and caps, so recalculate for user-entered SCU/budget.
-  if (route.profitPerScu && route.buyPrice) {
-    const maxByInvestment = investment > 0 ? investment / route.buyPrice : shipScu;
-    const caps = [
-      shipScu,
-      maxByInvestment,
-      finiteOr(route.maxSupplyScu, shipScu),
-      finiteOr(route.maxDemandScu, shipScu)
-    ];
+    const shipScuVal = wholeScu(shipScu);
+    const investmentVal = Math.floor(Number(investment) || 0);
+    const buyPrice = numeric(route.buyPrice);
+    const sellPrice = numeric(route.sellPrice);
+    const profitPerScu = numeric(route.profitPerScu) || (sellPrice > buyPrice ? sellPrice - buyPrice : 0);
 
-    const loadScu = Math.max(0, Math.floor(Math.min(...caps)));
-    const investmentRequired = loadScu * route.buyPrice;
-    const profit = loadScu * route.profitPerScu;
+    // Never allow fractional cargo in the UI.
+    const routeLoad = wholeScu(route.loadScu);
+    const maxByInvestment = buyPrice > 0 && investmentVal > 0 ? wholeScu(investmentVal / buyPrice) : shipScuVal;
+    const maxSupply = wholeScuOr(route.maxSupplyScu, routeLoad || shipScuVal);
+    const maxDemand = wholeScuOr(route.maxDemandScu, routeLoad || shipScuVal);
+
+    const loadScu = wholeScu(Math.max(0, Math.min(shipScuVal, maxByInvestment, maxSupply, maxDemand)));
+    const investmentRequired = buyPrice > 0 ? loadScu * buyPrice : numeric(route.investmentRequired);
+    const profit = profitPerScu > 0 ? loadScu * profitPerScu : numeric(route.profit);
     const distanceGm = numeric(route.distanceGm);
 
     return {
@@ -155,12 +158,9 @@ function recalcRoute(route, shipScu, investment) {
       loadScu,
       investmentRequired,
       profit,
-      roiPct: investmentRequired > 0 ? (profit / investmentRequired) * 100 : route.roiPct,
+      roiPct: investmentRequired > 0 ? (profit / investmentRequired) * 100 : numeric(route.roiPct),
       profitPerGm: distanceGm > 0 ? profit / distanceGm : route.profitPerGm
     };
-  }
-
-  return route;
 }
 
 function routeRowHtml(route) {
@@ -366,8 +366,8 @@ function normalizeCsvListing(row) {
 }
 
 function calculateLocalCsvRoutes(listings) {
-  const shipScu = numberFromInput(els.shipScu, state.data?.meta?.params?.shipScu ?? 128);
-  const investment = numberFromInput(els.investment, state.data?.meta?.params?.investment ?? 1_000_000);
+  const shipScu = wholeScu(numberFromInput(els.shipScu, state.data?.meta?.params?.shipScu ?? 128));
+  const investment = Math.floor(numberFromInput(els.investment, state.data?.meta?.params?.investment ?? 1_000_000));
   const byCommodity = new Map();
 
   for (const listing of latestListings(listings)) {
@@ -486,6 +486,26 @@ function stableId(parts) {
 
 function normalizeKey(value) {
   return String(value ?? "").trim().toLowerCase().replace(/[^a-z0-9а-яё]+/gi, "");
+}
+
+function formatScu(value) {
+  if (value === null || value === undefined || Number.isNaN(Number(value))) return "—";
+  return wholeScu(value).toLocaleString("ru-RU", { maximumFractionDigits: 0 });
+}
+
+function floorScu(value) {
+  return wholeScu(value);
+}
+
+function wholeScu(value) {
+  const n = Number(value);
+  if (!Number.isFinite(n)) return 0;
+  return Math.max(0, Math.floor(n + 1e-9));
+}
+
+function wholeScuOr(value, fallback) {
+  const n = Number(value);
+  return Number.isFinite(n) ? wholeScu(n) : wholeScu(fallback);
 }
 
 function formatMoney(value) {

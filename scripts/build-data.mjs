@@ -128,7 +128,8 @@ async function fetchScTradeToolRoutes() {
 function normalizeScTradeToolRoute(trade) {
   const origin = trade.origin || {};
   const destination = trade.destination || {};
-  const loadScu = firstNumber(origin.quantityInScu, origin.itemQuantityInScu, destination.quantityInScu, null);
+    const rawLoadScu = firstNumber(origin.quantityInScu, origin.itemQuantityInScu, destination.quantityInScu, null);
+    const loadScu = rawLoadScu ? floorScu(rawLoadScu) : null;
   const buyPrice = firstNumber(origin.price, null);
   const sellPrice = firstNumber(destination.price, null);
   const profit = firstNumber(trade.profit, null);
@@ -143,7 +144,7 @@ function normalizeScTradeToolRoute(trade) {
     buyPrice: round2OrNull(buyPrice),
     sellPrice: round2OrNull(sellPrice),
     profitPerScu: buyPrice && sellPrice ? round2(sellPrice - buyPrice) : null,
-    loadScu: loadScu ? round2(loadScu) : null,
+      loadScu,
     maxSupplyScu: firstNumber(origin.maxQuantityInScu, null),
     maxDemandScu: firstNumber(destination.maxQuantityInScu, null),
     investmentRequired: buyPrice && loadScu ? round2(buyPrice * loadScu) : null,
@@ -317,7 +318,7 @@ function calculateRoutesFromListings(listings, options) {
           maxDemandScu: finiteOrNull(destination.quantity),
           investmentRequired,
           profit,
-          roiPct: investmentRequired > 0 ? round2((profit / investmentRequired) * 100) : null,
+            roiPct: investmentRequired > 0 ? round2((profit / (buyPrice * loadScu)) * 100) : null,
           profitPerMinute: null,
           timeInSeconds: null,
           distanceGm: null,
@@ -519,6 +520,12 @@ function round2(value) {
 
 function round2OrNull(value) {
   return value === null || value === undefined ? null : round2(value);
+}
+
+function floorScu(value) {
+  const n = Number(value);
+  if (!Number.isFinite(n)) return 0;
+  return Math.max(0, Math.floor(n + 1e-9));
 }
 
 function finiteOr(value, fallback) {
