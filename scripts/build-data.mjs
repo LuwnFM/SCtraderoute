@@ -63,6 +63,22 @@ const output = {
   routes
 };
 
+// Ensure loadScu is an integer in the final output and recompute dependent fields.
+for (const r of output.routes || []) {
+  const n = Number(r.loadScu);
+  if (Number.isFinite(n)) {
+    const load = Math.max(0, Math.floor(n + 1e-9));
+    r.loadScu = load;
+    const buy = Number(r.buyPrice);
+    const ppsc = Number(r.profitPerScu);
+    if (Number.isFinite(buy) && load > 0) r.investmentRequired = round2(buy * load);
+    if (Number.isFinite(ppsc) && load > 0) r.profit = round2(load * ppsc);
+    if (Number.isFinite(r.investmentRequired) && r.investmentRequired > 0) {
+      r.roiPct = round2((Number(r.profit) / Number(r.investmentRequired)) * 100);
+    }
+  }
+}
+
 await mkdir("public/data", { recursive: true });
 await writeFile(OUT_FILE, JSON.stringify(output, null, 2) + "\n");
 console.log(`Wrote ${routes.length} routes to ${OUT_FILE}`);
@@ -318,7 +334,7 @@ function calculateRoutesFromListings(listings, options) {
           maxDemandScu: finiteOrNull(destination.quantity),
           investmentRequired,
           profit,
-            roiPct: investmentRequired > 0 ? round2((profit / (buyPrice * loadScu)) * 100) : null,
+            roiPct: investmentRequired > 0 ? round2((profit / investmentRequired) * 100) : null,
           profitPerMinute: null,
           timeInSeconds: null,
           distanceGm: null,
