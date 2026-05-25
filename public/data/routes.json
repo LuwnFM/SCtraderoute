@@ -1,0 +1,45 @@
+{
+  "meta": {
+    "generatedAt": "2026-05-25T08:42:42.259Z",
+    "source": "SC Trade Tools Swagger API only",
+    "baseUrl": "https://sc-trade.tools",
+    "openApiUrl": "https://sc-trade.tools/v3/api-docs",
+    "swaggerUiUrl": "https://sc-trade.tools/swagger-ui/index.html",
+    "params": {
+      "shipScu": 128,
+      "investment": 1000000,
+      "topN": 300,
+      "minInventoryScu": 1,
+      "maxRouteRoiPct": 300,
+      "maxSellBuyRatio": 4,
+      "maxProfitPerScu": 0,
+      "scTradeShip": "Freelancer",
+      "scTradeProfitType": "time",
+      "scTradeMaxStops": 1,
+      "scTradeSupportedBoxSize": 32,
+      "scTradeUseToolRoutes": true,
+      "scTradeCrowdsource": true,
+      "scTradeCrowdsourceMaxPages": 20,
+      "scTradeCrowdsourceMaxAgeDays": 21,
+      "scTradeCrowdsourceMinQuantityScu": 1,
+      "scTradeCrowdsourceRequireBoxCompatibility": false
+    },
+    "sourceReports": [
+      {
+        "name": "SC Trade Tools tool routes",
+        "ok": true,
+        "note": "skipped: SCTRADE_TOKEN is not set; /api/tools/trades requires a token, public crowdsource remains enabled",
+        "startedAt": "2026-05-25T08:42:42.047Z",
+        "finishedAt": "2026-05-25T08:42:42.048Z"
+      },
+      {
+        "name": "SC Trade Tools crowdsource",
+        "ok": false,
+        "note": "fetch failed",
+        "startedAt": "2026-05-25T08:42:42.052Z",
+        "finishedAt": "2026-05-25T08:42:42.258Z"
+      }
+    ]
+  },
+  "routes": []
+}

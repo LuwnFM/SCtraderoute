@@ -1,0 +1,17 @@
+{
+  "name": "sc-trade-routes-pages-sc-only",
+  "version": "1.1.0",
+  "description": "Static Star Citizen trade routes for GitHub Pages using only the SC Trade Tools Swagger API.",
+  "type": "module",
+  "private": true,
+  "scripts": {
+    "build:data": "node scripts/build-data.mjs",
+    "serve": "npx http-server public -p 8080"
+  },
+  "engines": {
+    "node": ">=20"
+  },
+  "devDependencies": {
+    "http-server": "^14.1.1"
+  }
+}

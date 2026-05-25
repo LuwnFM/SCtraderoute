@@ -1,0 +1,112 @@
+<!doctype html>
+<html lang="ru">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>SC Trade Tools Routes</title>
+  <link rel="stylesheet" href="./styles.css">
+</head>
+<body>
+  <header class="hero">
+    <div>
+      <p class="eyebrow">Star Citizen • SC Trade Tools API</p>
+      <h1>Калькулятор выгодных торговых маршрутов</h1>
+      <p class="muted">
+        GitHub Pages релиз. Данные берутся только из SC Trade Tools Swagger API, интерфейс считает и показывает маршруты.
+      </p>
+    </div>
+    <button id="refreshBtn" type="button">Обновить данные</button>
+  </header>
+
+  <main>
+    <section class="panel">
+      <div class="grid">
+        <label>
+          Груз, SCU
+          <input id="shipScu" type="number" min="1" step="1" value="128">
+        </label>
+        <label>
+          Бюджет, aUEC
+          <input id="investment" type="number" min="1" step="1000" value="1000000">
+        </label>
+        <label>
+          Источник
+          <select id="sourceFilter">
+            <option value="">Все</option>
+          </select>
+        </label>
+        <label>
+          Сортировка
+          <select id="sortBy">
+            <option value="profit">Прибыль за рейс</option>
+            <option value="roiPct">ROI</option>
+            <option value="profitPerScu">Прибыль / SCU</option>
+            <option value="profitPerMinute">Прибыль / мин</option>
+            <option value="profitPerGm">Прибыль / GM</option>
+            <option value="distanceGm">Дистанция</option>
+            <option value="updatedAt">Свежесть</option>
+          </select>
+        </label>
+        <label>
+          Товар
+          <input id="commoditySearch" type="search" placeholder="например: Gold">
+        </label>
+        <label>
+          Локация
+          <input id="locationSearch" type="search" placeholder="origin или destination">
+        </label>
+        <label class="fileLabel">
+          CSV Companion / свои замеры
+          <input id="csvInput" type="file" accept=".csv,text/csv">
+        </label>
+        <div class="csvActions">
+          <button id="clearCsvBtn" type="button">Убрать CSV</button>
+          <span id="localCsvInfo" class="muted">CSV не загружен</span>
+        </div>
+      </div>
+    </section>
+
+    <section class="stats">
+      <div><strong id="routeCount">0</strong><span>маршрутов</span></div>
+      <div><strong id="generatedAt">—</strong><span>последняя сборка</span></div>
+      <div><strong id="sources">—</strong><span>источники</span></div>
+      <div><strong id="status">загрузка…</strong><span>статус</span></div>
+    </section>
+
+    <section class="panel">
+      <div class="tableWrap">
+        <table>
+          <thead>
+            <tr>
+              <th>Товар</th>
+              <th>Купить</th>
+              <th>Продать</th>
+              <th>SCU</th>
+              <th>Цена → продажа</th>
+              <th>Прибыль</th>
+              <th>ROI</th>
+              <th>Дистанция</th>
+              <th>Источник</th>
+              <th>Обновлено</th>
+            </tr>
+          </thead>
+          <tbody id="routesBody">
+            <tr><td colspan="10">Загрузка данных…</td></tr>
+          </tbody>
+        </table>
+      </div>
+    </section>
+
+    <section class="panel small">
+      <h2>Заметки</h2>
+      <ul id="sourceReports"></ul>
+      <p class="muted">
+        Это не бот и не макрос. Сайт не читает экран, не нажимает клавиши и не взаимодействует с клиентом игры.
+        CSV-импорт считает маршруты только из файла, выбранного вручную в браузере; файл никуда не отправляется. Внешний источник сборки — только sc-trade.tools.
+      </p>
+    </section>
+  </main>
+
+  <script src="./app.js"></script>
+</body>
+</html>
