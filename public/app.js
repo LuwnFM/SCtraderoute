@@ -95,7 +95,7 @@ function renderMeta() {
 }
 
 function render() {
-  const shipScu = wholeScu(numberFromInput(els.shipScu, state.data?.meta?.params?.shipScu ?? 128));
+  const shipScu = floorScu(numberFromInput(els.shipScu, state.data?.meta?.params?.shipScu ?? 128));
   const investment = Math.floor(numberFromInput(els.investment, state.data?.meta?.params?.investment ?? 1_000_000));
   const source = els.sourceFilter.value;
   const commodityNeedle = els.commoditySearch.value.trim().toLowerCase();
@@ -136,19 +136,19 @@ function render() {
 
 function recalcRoute(route, shipScu, investment) {
   // SC Trade Tools crowdsource rows have profitPerScu and caps, so recalculate for user-entered SCU/budget.
-    const shipScuVal = wholeScu(shipScu);
+    const shipScuVal = floorScu(shipScu);
     const investmentVal = Math.floor(Number(investment) || 0);
     const buyPrice = numeric(route.buyPrice);
     const sellPrice = numeric(route.sellPrice);
     const profitPerScu = numeric(route.profitPerScu) || (sellPrice > buyPrice ? sellPrice - buyPrice : 0);
 
     // Never allow fractional cargo in the UI.
-    const routeLoad = wholeScu(route.loadScu);
-    const maxByInvestment = buyPrice > 0 && investmentVal > 0 ? wholeScu(investmentVal / buyPrice) : shipScuVal;
+    const routeLoad = floorScu(route.loadScu);
+    const maxByInvestment = buyPrice > 0 && investmentVal > 0 ? floorScu(investmentVal / buyPrice) : shipScuVal;
     const maxSupply = wholeScuOr(route.maxSupplyScu, routeLoad || shipScuVal);
     const maxDemand = wholeScuOr(route.maxDemandScu, routeLoad || shipScuVal);
 
-    const loadScu = wholeScu(Math.max(0, Math.min(shipScuVal, maxByInvestment, maxSupply, maxDemand)));
+    const loadScu = floorScu(Math.max(0, Math.min(shipScuVal, maxByInvestment, maxSupply, maxDemand)));
     const investmentRequired = buyPrice > 0 ? loadScu * buyPrice : numeric(route.investmentRequired);
     const profit = profitPerScu > 0 ? loadScu * profitPerScu : numeric(route.profit);
     const distanceGm = numeric(route.distanceGm);
@@ -183,7 +183,7 @@ function routeRowHtml(route) {
       <td><strong>${escapeHtml(route.commodity)}</strong>${spread}${ppm}${routeLink}</td>
       <td>${escapeHtml(route.origin)}</td>
       <td>${escapeHtml(route.destination)}</td>
-      <td>${formatNumber(route.loadScu)}</td>
+      <td>${formatScu(route.loadScu)}</td>
       <td>${formatMoney(route.buyPrice)} → ${formatMoney(route.sellPrice)}<br><span class="muted">+${formatMoney(route.profitPerScu)}/SCU</span></td>
       <td><strong class="good">${formatMoney(route.profit)}</strong><span class="muted">инвест: ${formatMoney(route.investmentRequired)}</span></td>
       <td>${formatPct(route.roiPct)}</td>
@@ -366,7 +366,7 @@ function normalizeCsvListing(row) {
 }
 
 function calculateLocalCsvRoutes(listings) {
-  const shipScu = wholeScu(numberFromInput(els.shipScu, state.data?.meta?.params?.shipScu ?? 128));
+  const shipScu = floorScu(numberFromInput(els.shipScu, state.data?.meta?.params?.shipScu ?? 128));
   const investment = Math.floor(numberFromInput(els.investment, state.data?.meta?.params?.investment ?? 1_000_000));
   const byCommodity = new Map();
 
@@ -388,7 +388,7 @@ function calculateLocalCsvRoutes(listings) {
         const profitPerScu = destination.price - origin.price;
         if (profitPerScu <= 0) continue;
         const maxByInvestment = investment > 0 ? investment / origin.price : shipScu;
-        const loadScu = Math.max(0, Math.floor(Math.min(shipScu, origin.quantity, destination.quantity, maxByInvestment)));
+        const loadScu = floorScu(Math.max(0, Math.min(shipScu, origin.quantity, destination.quantity, maxByInvestment)));
         if (loadScu <= 0) continue;
         const investmentRequired = loadScu * origin.price;
         const profit = loadScu * profitPerScu;
@@ -490,11 +490,13 @@ function normalizeKey(value) {
 
 function formatScu(value) {
   if (value === null || value === undefined || Number.isNaN(Number(value))) return "—";
-  return wholeScu(value).toLocaleString("ru-RU", { maximumFractionDigits: 0 });
+  return floorScu(value).toLocaleString("ru-RU", { maximumFractionDigits: 0 });
 }
 
 function floorScu(value) {
-  return wholeScu(value);
+  const n = Number(value);
+  if (!Number.isFinite(n)) return 0;
+  return Math.max(0, Math.floor(n + 1e-9));
 }
 
 function wholeScu(value) {

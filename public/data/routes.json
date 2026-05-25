@@ -1,6 +1,6 @@
 {
   "meta": {
-    "generatedAt": "2026-05-25T09:34:14.933Z",
+    "generatedAt": "2026-05-25T09:56:40.476Z",
     "source": "SC Trade Tools Swagger API only",
     "baseUrl": "https://sc-trade.tools",
     "openApiUrl": "https://sc-trade.tools/v3/api-docs",
@@ -29,29 +29,29 @@
         "name": "SC Trade Tools tool routes",
         "ok": true,
         "note": "skipped: SCTRADE_TOKEN is not set; /api/tools/trades requires a token, public crowdsource remains enabled",
-        "startedAt": "2026-05-25T09:34:12.336Z",
-        "finishedAt": "2026-05-25T09:34:12.337Z"
+        "startedAt": "2026-05-25T09:56:36.533Z",
+        "finishedAt": "2026-05-25T09:56:36.534Z"
       },
       {
         "name": "SC Trade Tools crowdsource pages",
         "ok": true,
         "note": "fetched 2000 listings from 20 page(s); max pages 20; max age 21 day(s)",
-        "startedAt": "2026-05-25T09:34:14.900Z",
-        "finishedAt": "2026-05-25T09:34:14.900Z"
+        "startedAt": "2026-05-25T09:56:40.339Z",
+        "finishedAt": "2026-05-25T09:56:40.339Z"
       },
       {
         "name": "SC Trade Tools crowdsource",
         "ok": true,
         "note": "calculated 488 routes from /api/crowdsource/commodity-listings",
-        "startedAt": "2026-05-25T09:34:12.346Z",
-        "finishedAt": "2026-05-25T09:34:14.930Z"
+        "startedAt": "2026-05-25T09:56:36.539Z",
+        "finishedAt": "2026-05-25T09:56:40.473Z"
       },
       {
         "name": "Sanity filter",
         "ok": true,
         "note": "dropped 40 unrealistic routes: ratio=40, roi=0, profitPerScu=0",
-        "startedAt": "2026-05-25T09:34:14.930Z",
-        "finishedAt": "2026-05-25T09:34:14.930Z"
+        "startedAt": "2026-05-25T09:56:40.474Z",
+        "finishedAt": "2026-05-25T09:56:40.474Z"
       }
     ]
   },
@@ -244,7 +244,7 @@
           "source": "SC Trade Tools /api/crowdsource/commodity-listings",
           "buyPrice": 72214,
           "sellPrice": 96000,
-          "profit": 329436.1,
+          "profit": 309218,
           "profitPerMinute": null,
           "distanceGm": null,
           "profitPerGm": null,
@@ -640,7 +640,7 @@
           "source": "SC Trade Tools /api/crowdsource/commodity-listings",
           "buyPrice": 18050,
           "sellPrice": 23000,
-          "profit": 274230,
+          "profit": 272250,
           "profitPerMinute": null,
           "distanceGm": null,
           "profitPerGm": null,
@@ -1234,7 +1234,7 @@
           "source": "SC Trade Tools /api/crowdsource/commodity-listings",
           "buyPrice": 8379,
           "sellPrice": 10000,
-          "profit": 193466.35,
+          "profit": 192899,
           "profitPerMinute": null,
           "distanceGm": null,
           "profitPerGm": null,
@@ -2158,7 +2158,7 @@
           "source": "SC Trade Tools /api/crowdsource/commodity-listings",
           "buyPrice": 8379,
           "sellPrice": 9600,
-          "profit": 145726.35,
+          "profit": 145299,
           "profitPerMinute": null,
           "distanceGm": null,
           "profitPerGm": null,
@@ -3280,7 +3280,7 @@
           "source": "SC Trade Tools /api/crowdsource/commodity-listings",
           "buyPrice": 21614,
           "sellPrice": 24000,
-          "profit": 110400.22,
+          "profit": 109756,
           "profitPerMinute": null,
           "distanceGm": null,
           "profitPerGm": null,
@@ -7504,7 +7504,7 @@
           "source": "SC Trade Tools /api/crowdsource/commodity-listings",
           "buyPrice": 21614,
           "sellPrice": 23000,
-          "profit": 64130.22,
+          "profit": 63756,
           "profitPerMinute": null,
           "distanceGm": null,
           "profitPerGm": null,

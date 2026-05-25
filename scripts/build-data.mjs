@@ -308,7 +308,7 @@ function calculateRoutesFromListings(listings, options) {
         if (profitPerScu <= 0) continue;
 
         const maxByInvestment = CFG.investment > 0 ? CFG.investment / origin.price : CFG.shipScu;
-        const loadScu = round2(Math.max(0, Math.min(
+        const loadScu = floorScu(Math.max(0, Math.min(
           CFG.shipScu,
           finiteOr(origin.quantity, CFG.shipScu),
           finiteOr(destination.quantity, CFG.shipScu),
