@@ -24,6 +24,13 @@ jobs:
       - uses: actions/setup-node@v4
         with:
           node-version: 22
+      - name: Restore rolling UEX history cache
+        uses: actions/cache@v4
+        with:
+          path: public/data/trade-history.json
+          key: ${{ runner.os }}-uex-history-${{ github.run_id }}
+          restore-keys: |
+            ${{ runner.os }}-uex-history-
       - name: Install dependencies
         run: npm install --no-audit --no-fund
       - name: Refresh UEX + SC Trade Tools snapshot
@@ -32,6 +39,14 @@ jobs:
           UEX_API_BASE: 'https://api.uexcorp.uk/2.0'
           SCTRADE_CROWD_MAX_PAGES: '20'
           UEX_DISTANCE_PAIRS: '80'
+      - name: Refresh rolling UEX price history cache
+        run: npm run build:history
+        env:
+          UEX_API_BASE: 'https://api.uexcorp.uk/2.0'
+          UEX_HISTORY_PAIRS: '30'
+          UEX_HISTORY_POINTS: '90'
+          UEX_HISTORY_REFRESH_HOURS: '48'
+          UEX_HISTORY_CACHE_PAIRS: '1000'
       - run: npm test
       - run: npm run typecheck
       - run: npm run build
