@@ -1,186 +1,154 @@
-# Star Citizen Trade Routes — SC Trade Tools only + GitHub Pages
+# CargoNav — Star Citizen Trade Routes
 
-Готовый статический сайт для GitHub Pages. В этом релизе удалён весь старый внешний API-код. Сборка использует только официальный SC Trade Tools Swagger/OpenAPI:
+CargoNav is a static GitHub Pages application for finding profitable Star Citizen cargo routes across Stanton, Pyro and Nyx. It combines community trade data from UEX and SC Trade Tools, calculates route profitability locally in the browser, and keeps a deployable fallback snapshot in the repository.
 
-- Swagger UI: `https://sc-trade.tools/swagger-ui/index.html`
-- OpenAPI JSON: `https://sc-trade.tools/v3/api-docs`
-- публичный источник без токена: `GET /api/crowdsource/commodity-listings`
-- опциональный источник с токеном: `POST /api/tools/trades`
+## What changed from the old SCtraderoute / Poehali draft
 
-Сайт не использует сервер, базу данных и внешние API кроме `sc-trade.tools`. GitHub Actions раз в час собирает `public/data/routes.json` и деплоит папку `public` в GitHub Pages.
+- fixed cargo calculation: `min(ship capacity, budget, seller supply, buyer demand)`;
+- buy and sell freshness are tracked independently;
+- multi-source snapshot (UEX + public SC Trade Tools crowdsource);
+- route source badges and source health report;
+- system / terminal / commodity / freshness / ROI / profit-per-SCU / container / distance filters;
+- selected ship profiles use SCU and container metadata when available;
+- Stanton ↔ Pyro ↔ Nyx jump-path display;
+- favorites and named filter presets stored locally in the browser;
+- multi-stop route mode;
+- real UEX price-history request from route details (no fake chart if unavailable);
+- scheduled GitHub Actions data refresh + GitHub Pages deploy;
+- no Poehali telemetry, inspector scripts, template metadata or external Poehali CDN dependency;
+- no framework/runtime dependency: the deployed site is plain HTML/CSS/ES modules.
 
-## Что внутри
+## Data sources
+
+### UEX API 2.0
+
+The scheduled data builder reads public UEX resources:
+
+- `GET /commodities`
+- `GET /terminals`
+- `GET /commodities_prices_all`
+- `GET /vehicles`
+- `GET /jump_points`
+- `GET /terminals_distances` for a capped set of high-value route pairs
+
+The browser can optionally request:
+
+- `GET /commodities_prices_history?id_terminal=...&id_commodity=...`
+
+UEX data is community maintained and may differ from current live-server values.
+
+### SC Trade Tools
+
+The builder reads the public paginated crowdsource endpoint:
+
+- `GET /api/crowdsource/commodity-listings?page=N`
+
+The endpoint is intentionally treated as crowdsourced/unfiltered data. The app keeps the source label visible rather than pretending it is authoritative.
+
+Token-protected SC Trade Tools endpoints are not required for the basic deployment.
+
+## Data pipeline
+
+`.github/workflows/pages.yml` runs:
+
+1. checkout;
+2. `npm ci`;
+3. `npm run build:data`;
+4. `npm test`;
+5. `npm run build` (static verification);
+6. deploy `public/` to GitHub Pages.
+
+The workflow runs on pushes to `main`, manually, and hourly.
+
+If one live source fails, the builder uses the other source plus the last repository snapshot where possible. If all live sources fail and a previous snapshot exists, the existing snapshot is preserved instead of replacing it with empty data.
+
+## Route calculation
+
+For a candidate commodity route:
 
 ```text
-.github/workflows/pages.yml   # GitHub Pages build/deploy
-scripts/build-data.mjs        # загрузка данных только с SC Trade Tools API
-public/index.html             # статический интерфейс
-public/app.js                 # фильтры, сортировка, CSV-импорт
-public/styles.css             # стили
-public/data/routes.json       # генерируется при сборке
+profitPerScu = destination sell price - origin buy price
+budgetUnits = floor(budget / origin buy price)
+units = floor(min(ship capacity, budgetUnits, known seller supply, known buyer demand))
+profit = units * profitPerScu
+ROI = profit / investment * 100
 ```
 
-## Как работает сборка
+Unknown supply/demand is explicitly marked in the UI. The user can require both values to be known.
 
-1. Если задан `SCTRADE_TOKEN`, скрипт вызывает `POST /api/tools/trades` и берёт готовые маршруты SC Trade Tools.
-2. Даже без токена скрипт вызывает публичный `GET /api/crowdsource/commodity-listings?page=N`, собирает свежие `SELLS` и `BUYS` листинги и считает buy → sell маршруты локально.
-3. Нереалистичные выбросы отсекаются параметрами `MAX_ROUTE_ROI_PCT`, `MAX_SELL_BUY_RATIO`, `MAX_PROFIT_PER_SCU`.
-4. Результат записывается в `public/data/routes.json`.
-5. GitHub Pages публикует папку `public`.
+Freshness filtering checks both market sides. The route's common freshness is the older of the two observations, not the newer one.
 
-## Быстрый старт в Codespaces с телефона
+## Multi-system routing
 
-1. Создай новый пустой репозиторий на GitHub.
-2. Открой его в Codespaces.
-3. Загрузи этот ZIP в файловую панель Codespaces.
-4. В терминале выполни команды из раздела ниже.
+Jump-point metadata comes from UEX. The browser builds a shortest system path through the known jump-point graph. A conservative Stanton ↔ Pyro ↔ Nyx fallback exists only for snapshots that lack jump metadata.
 
-## Команды для терминала Codespaces
+Distances are loaded only for a capped set of high-value UEX terminal pairs to avoid issuing thousands of API requests every hour. Routes without a known distance remain usable unless the user enables a maximum-distance filter.
 
-Замени имя ZIP, если GitHub загрузил его под другим названием:
+## Multi-stop mode
+
+The multi-stop view chains profitable A → B routes where the next leg begins at the previous destination. Capital is recalculated between legs. The implementation intentionally caps the number of stages and candidate routes so it remains fast in a static browser app.
+
+This is an MVP route-chain optimizer, not a full mixed-cargo linear-programming solver like research projects such as SCOPT.
+
+## Local development
+
+No runtime dependencies are required for the site itself.
 
 ```bash
-cd /workspaces
-ls -lah
+npm ci
+npm test
+npm run build
+python -m http.server 8080 -d public
 ```
 
-Если ZIP лежит в корне текущего Codespace:
+Then open `http://127.0.0.1:8080`.
+
+To refresh live data locally:
 
 ```bash
-cd /workspaces/$(basename "$PWD")
-```
-
-Полная автоматическая распаковка и публикация в текущий репозиторий:
-
-```bash
-set -e
-
-ZIP_FILE="sc-trade-routes-pages-sc-only-release.zip"
-PROJECT_DIR="sc-trade-routes-pages-v5"
-
-# 1) Найти ZIP, если имя отличается
-if [ ! -f "$ZIP_FILE" ]; then
-  ZIP_FILE=$(ls -1 *.zip | head -n 1)
-fi
-
-echo "Using ZIP: $ZIP_FILE"
-
-# 2) Распаковать во временную папку
-rm -rf /tmp/sc-trade-pages-import
-mkdir -p /tmp/sc-trade-pages-import
-unzip -o "$ZIP_FILE" -d /tmp/sc-trade-pages-import
-
-# 3) Найти папку проекта внутри ZIP
-SRC_DIR=$(find /tmp/sc-trade-pages-import -maxdepth 2 -type f -name package.json -exec dirname {} \; | head -n 1)
-if [ -z "$SRC_DIR" ]; then
-  echo "package.json not found in ZIP"
-  exit 1
-fi
-
-echo "Source dir: $SRC_DIR"
-
-# 4) Скопировать файлы в текущий репозиторий
-rsync -av --delete \
-  --exclude='.git' \
-  --exclude='node_modules' \
-  --exclude='*.zip' \
-  "$SRC_DIR"/ ./
-
-# 5) Проверить, что старые внешние API полностью удалены
-if grep -RniE '[Uu][Ee][Xx]|api\.[Uu][Ee][Xx]|[Uu][Ee][Xx]corp' . --exclude-dir=.git; then
-  echo "Found forbidden external API references"
-  exit 1
-fi
-
-# 6) Локальная тестовая сборка
-node --version
 npm run build:data
-
-# 7) Первый коммит и push
-git status
-git add .
-git commit -m "Release SC Trade Tools only GitHub Pages build"
-git branch -M main
-git push -u origin main
 ```
 
-После push зайди в **Settings → Pages** и выбери **Build and deployment → Source: GitHub Actions**. Потом открой **Actions → Build and deploy GitHub Pages → Run workflow**.
+This command requires internet access.
 
-## Настройки GitHub Secrets и Variables
+## Environment variables
 
-### Secret
-
-`SCTRADE_TOKEN` — опционально. Нужен только для token-protected Swagger endpoints, например `POST /api/tools/trades`. Без него сборка всё равно работает через публичный crowdsource endpoint.
-
-### Variables
-
-Основные:
+Optional build-time variables:
 
 ```text
-SHIP_SCU=128
-INVESTMENT_AUEC=1000000
-TOP_N=300
-MIN_INVENTORY_SCU=1
-MAX_ROUTE_ROI_PCT=300
-MAX_SELL_BUY_RATIO=4
-MAX_PROFIT_PER_SCU=0
-ALLOW_EMPTY_ROUTES=false
-```
-
-SC Trade Tools tool routes:
-
-```text
-SCTRADE_USE_TOOL_ROUTES=true
-SCTRADE_SHIP=Freelancer
-SCTRADE_PROFIT_TYPE=time
-SCTRADE_MAX_STOPS=1
-SCTRADE_SUPPORTED_BOX_SIZE_SCU=32
-SCTRADE_MIN_SECURITY_LEVEL=0
-SCTRADE_AVOID_HIDDEN_LOCATIONS=true
-SCTRADE_ALLOW_WAIT_TIMES=false
-SCTRADE_USE_AUTO_LOADING=false
-SCTRADE_SMART_FILTERS=true
-```
-
-Фильтры, если нужно ограничить сборку:
-
-```text
-SCTRADE_ORIGIN=
-SCTRADE_LOCATION_NAMES=
-SCTRADE_LOCATION_NAMES_TYPE=blacklist
-SCTRADE_LOCATION_TYPES=
-SCTRADE_LOCATION_TYPES_TYPE=blacklist
-SCTRADE_FACTION_NAMES=
-SCTRADE_FACTION_NAMES_TYPE=blacklist
-SCTRADE_COMMODITY_NAMES=
-SCTRADE_COMMODITY_NAMES_TYPE=blacklist
-SCTRADE_COMMODITY_TYPES=
-SCTRADE_COMMODITY_TYPES_TYPE=blacklist
-```
-
-Crowdsource:
-
-```text
-SCTRADE_USE_CROWDSOURCE=true
+UEX_API_BASE=https://api.uexcorp.space/2.0
+SCTRADE_API_BASE=https://sc-trade.tools
 SCTRADE_CROWD_MAX_PAGES=20
-SCTRADE_CROWD_MAX_AGE_DAYS=21
-SCTRADE_CROWD_MIN_QUANTITY_SCU=1
-SCTRADE_CROWD_REQUIRE_BOX_COMPAT=false
+UEX_DISTANCE_PAIRS=80
 ```
 
-## Локальный запуск
+No API secret is required for the default public-source build.
 
-```bash
-npm run build:data
-npm run serve
-```
+## GitHub Pages
 
-Открой `http://127.0.0.1:8080`.
+Repository: `LuwnFM/SCtraderoute`
 
-## Важно
+The site is static and uses relative asset paths, so no Vite `base` configuration is required. Set repository **Settings → Pages → Source** to **GitHub Actions** if it is not already selected.
 
-- В проекте нет старого внешнего API-кода, старых API secrets, старых API variables и старых API ссылок.
-- `/api/tools/trades` требует `SCTRADE_TOKEN`.
-- `/api/crowdsource/commodity-listings` публичный, но данные unfiltered/cached, поэтому дорогие маршруты лучше проверять в игре.
-- Если workflow падает с `No routes were generated`, проверь сетевой доступ к SC Trade Tools, слишком строгие фильтры и `SCTRADE_TOKEN` для protected endpoints. Для временного пустого деплоя можно поставить `ALLOW_EMPTY_ROUTES=true`.
-- CSV-импорт остаётся только локальным: выбранный файл читается браузером и никуда не отправляется.
+## Persistence
+
+Favorites, presets, the selected ship and filters are stored in browser `localStorage`. No account, backend or database is required.
+
+## Tests
+
+`node --test` covers the critical route logic, including:
+
+- ship capacity limit;
+- budget limit;
+- seller supply limit;
+- buyer demand limit;
+- legality filter;
+- stale-data filtering;
+- distance filtering;
+- container compatibility;
+- jump-path calculation;
+- multi-stop chaining.
+
+## Disclaimer
+
+CargoNav is an unofficial fan-made tool and is not affiliated with Cloud Imperium Games or Roberts Space Industries. Trade data is community maintained. Always verify high-value trades in game before committing large amounts of aUEC.

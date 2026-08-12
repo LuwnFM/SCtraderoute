@@ -1,112 +1,114 @@
 <!doctype html>
 <html lang="ru">
 <head>
-  <meta charset="utf-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1">
-  <title>SC Trade Tools Routes</title>
-  <link rel="stylesheet" href="./styles.css?v=integer-scu-4">
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <meta name="theme-color" content="#0a111c" />
+  <meta name="description" content="CargoNav — калькулятор торговых маршрутов Star Citizen по данным UEX и SC Trade Tools." />
+  <title>CargoNav — маршруты Star Citizen</title>
+  <link rel="icon" href="./favicon.svg" type="image/svg+xml" />
+  <link rel="stylesheet" href="./styles.css" />
 </head>
 <body>
-  <header class="hero">
-    <div>
-      <p class="eyebrow">Star Citizen • SC Trade Tools API</p>
-      <h1>Калькулятор выгодных торговых маршрутов</h1>
-      <p class="muted">
-        Данные берутся только из SC Trade Tools Swagger API, интерфейс считает и показывает маршруты.
-      </p>
-    </div>
-    <button id="refreshBtn" type="button">Обновить данные</button>
+  <div class="stars" aria-hidden="true"></div>
+  <header class="topbar">
+    <a class="brand" href="#top"><span class="brand-mark">◇</span><span>Cargo<b>Nav</b></span></a>
+    <nav>
+      <button data-scroll="terminal">Расчёт</button>
+      <button data-scroll="routes">Маршруты</button>
+      <button data-scroll="fleet">Флот</button>
+      <button data-scroll="faq">FAQ</button>
+    </nav>
+    <span id="data-status" class="status">загрузка…</span>
   </header>
 
   <main>
-    <section class="panel">
-      <div class="grid">
-        <label>
-          Груз, SCU
-          <input id="shipScu" type="number" min="1" step="1" value="128">
-        </label>
-        <label>
-          Бюджет, aUEC
-          <input id="investment" type="number" min="1" step="1000" value="1000000">
-        </label>
-        <label>
-          Источник
-          <select id="sourceFilter">
-            <option value="">Все</option>
-          </select>
-        </label>
-        <label>
-          Сортировка
-          <select id="sortBy">
-            <option value="profit">Прибыль за рейс</option>
-            <option value="roiPct">ROI</option>
-            <option value="profitPerScu">Прибыль / SCU</option>
-            <option value="profitPerMinute">Прибыль / мин</option>
-            <option value="profitPerGm">Прибыль / GM</option>
-            <option value="distanceGm">Дистанция</option>
-            <option value="updatedAt">Свежесть</option>
-          </select>
-        </label>
-        <label>
-          Товар
-          <input id="commoditySearch" type="search" placeholder="например: Gold">
-        </label>
-        <label>
-          Локация
-          <input id="locationSearch" type="search" placeholder="origin или destination">
-        </label>
-        <label class="fileLabel">
-          CSV Companion / свои замеры
-          <input id="csvInput" type="file" accept=".csv,text/csv">
-        </label>
-        <div class="csvActions">
-          <button id="clearCsvBtn" type="button">Убрать CSV</button>
-          <span id="localCsvInfo" class="muted">CSV не загружен</span>
+    <section id="top" class="hero section">
+      <div class="hero-grid"></div>
+      <div class="hero-copy">
+        <p class="eyebrow"><span class="live-dot"></span><span id="hero-source">UEX + SC Trade Tools</span></p>
+        <h1>Торговые маршруты <em>Star Citizen</em></h1>
+        <p>Подбирает прибыльные рейсы для Stanton, Pyro и Nyx с учётом корабля, бюджета, supply/demand, свежести цен, контейнеров и межсистемных переходов.</p>
+        <div class="hero-actions"><button class="primary" data-scroll="terminal">Рассчитать рейс</button><button class="ghost" data-scroll="fleet">Выбрать корабль</button></div>
+      </div>
+      <dl class="hero-stats">
+        <div><dt>Торговых точек</dt><dd id="stat-terminals">—</dd></div>
+        <div><dt>Товаров</dt><dd id="stat-commodities">—</dd></div>
+        <div><dt>Кораблей</dt><dd id="stat-ships">—</dd></div>
+      </dl>
+    </section>
+
+    <section id="terminal" class="section border-top">
+      <p class="eyebrow">Шаг 1</p>
+      <h2>Настройте параметры полёта</h2>
+      <div class="panel filter-panel">
+        <div class="panel-head"><div><h3>Панель расчёта рейса</h3><p>Найдено: <b id="found-count">0</b> · snapshot: <span id="snapshot-time">—</span></p></div><div class="row"><button id="refresh-data" class="small-btn">Обновить</button><button id="reset-filters" class="small-btn ghost">Сброс</button></div></div>
+        <div class="filter-grid">
+          <div class="filter-col">
+            <label>Корабль<select id="ship"><option value="custom">Свой объём трюма</option></select></label>
+            <label>Вместимость, SCU<input id="capacity" type="number" min="1" max="100000" value="96" /></label>
+            <label>Бюджет, aUEC<input id="budget" type="number" min="0" step="10000" value="1000000" /></label>
+            <label>Размер контейнера<select id="container-size"><option value="0">Авто / любой</option><option>1</option><option>2</option><option>4</option><option>8</option><option>16</option><option>24</option><option>32</option></select></label>
+          </div>
+          <div class="filter-col">
+            <label>Товар<select id="commodity"><option value="all">Все товары</option></select></label>
+            <div class="split"><label>Система закупки<select id="system-from"><option value="all">Любая</option></select></label><label>Система сбыта<select id="system-to"><option value="all">Любая</option></select></label></div>
+            <div class="split"><label>Точка закупки<select id="terminal-from"><option value="all">Любая точка</option></select></label><label>Точка сбыта<select id="terminal-to"><option value="all">Любая точка</option></select></label></div>
+            <label>Поиск<input id="search" type="search" placeholder="Area18, Gold, Levski…" /></label>
+          </div>
+          <div class="filter-col">
+            <label>Сортировка<select id="sort"></select></label>
+            <div class="switch-box">
+              <label class="check"><input id="only-legal" type="checkbox" />Исключить контрабанду</label>
+              <label class="check"><input id="same-system" type="checkbox" />Не покидать систему</label>
+              <label class="check"><input id="known-availability" type="checkbox" />Только известные supply + demand</label>
+              <label class="check"><input id="favorites-only" type="checkbox" />Только избранные маршруты</label>
+            </div>
+            <div class="split"><label>Мин. прибыль<input id="min-profit" type="number" min="0" step="5000" value="0" /></label><label>Мин. ROI, %<input id="min-roi" type="number" min="0" step="1" value="0" /></label></div>
+            <div class="split"><label>Мин. aUEC/SCU<input id="min-profit-scu" type="number" min="0" value="0" /></label><label>Макс. возраст, ч<input id="max-age" type="number" min="0" placeholder="0 = любой" value="0" /></label></div>
+            <label>Макс. расстояние, GM<input id="max-distance" type="number" min="0" placeholder="0 = любое/неизвестное" value="0" /></label>
+          </div>
         </div>
+        <div class="preset-bar"><input id="preset-name" placeholder="Название пресета" /><button id="save-preset" class="small-btn">Сохранить пресет</button><select id="preset-select"><option value="">Выберите пресет</option></select><button id="apply-preset" class="small-btn ghost">Применить</button><button id="delete-preset" class="small-btn danger-outline">Удалить</button></div>
       </div>
+      <div id="summary" class="summary-grid"></div>
     </section>
 
-    <section class="stats">
-      <div><strong id="routeCount">0</strong><span>маршрутов</span></div>
-      <div><strong id="generatedAt">—</strong><span>последняя сборка</span></div>
-      <div><strong id="sources">—</strong><span>источники</span></div>
-      <div><strong id="status">загрузка…</strong><span>статус</span></div>
+    <section id="routes" class="section border-top">
+      <div class="section-head"><div><p class="eyebrow">Шаг 2</p><h2>Прибыльные маршруты</h2></div><div class="mode-tabs"><button id="mode-single" class="is-active">A → B</button><button id="mode-multi">Multi-stop</button></div></div>
+      <div id="multi-options" class="multi-options" hidden><label>Количество этапов<select id="max-stops"><option value="2">2</option><option value="3">3</option><option value="4">4</option></select></label><p>Multi-stop строится из тех же отфильтрованных рыночных данных и пересчитывает капитал между этапами.</p></div>
+      <div id="route-list" class="route-list"><div class="empty-state">Загрузка…</div></div>
+      <div id="load-more-wrap" class="load-more"><button id="load-more" class="small-btn">Показать ещё</button></div>
     </section>
 
-    <section class="panel">
-      <div class="tableWrap">
-        <table>
-          <thead>
-            <tr>
-              <th>Товар</th>
-              <th>Купить</th>
-              <th>Продать</th>
-              <th>SCU</th>
-              <th>Цена → продажа</th>
-              <th>Прибыль</th>
-              <th>ROI</th>
-              <th>Дистанция</th>
-              <th>Источник</th>
-              <th>Обновлено</th>
-            </tr>
-          </thead>
-          <tbody id="routesBody">
-            <tr><td colspan="10">Загрузка данных…</td></tr>
-          </tbody>
-        </table>
+    <section id="fleet" class="section border-top">
+      <div class="section-head"><div><p class="eyebrow">Флот</p><h2>Корабли с грузовым трюмом</h2></div><input id="fleet-search" class="fleet-search" type="search" placeholder="Поиск корабля…" /></div>
+      <p class="muted intro">По умолчанию показаны актуальные космические корабли без concept/ground vehicle. Вместимость и контейнеры — по community-данным UEX, не «официальные CIG» значения.</p>
+      <div id="fleet-grid" class="fleet-grid"></div>
+    </section>
+
+    <section id="faq" class="section border-top">
+      <p class="eyebrow">Справка</p><h2>Что важно знать</h2>
+      <div class="faq-grid">
+        <article><h3>Откуда цены?</h3><p>Snapshot собирается GitHub Actions из UEX и публичного crowdsource SC Trade Tools. Если один источник падает, последний рабочий snapshot сохраняется.</p></article>
+        <article><h3>Почему прибыль может отличаться?</h3><p>Star Citizen меняет supply/demand. Маршрут ограничивается трюмом, бюджетом, supply продавца и demand покупателя; неизвестные значения явно отмечаются.</p></article>
+        <article><h3>Stanton / Pyro / Nyx</h3><p>Межсистемные маршруты показывают цепочку систем и jump points из UEX. Временные/изменённые связи подхватятся при обновлении данных.</p></article>
+        <article><h3>История цен</h3><p>В «Разборе рейса» можно запросить реальную UEX commodities_prices_history. Если API недоступен, график не подменяется фейковыми данными.</p></article>
       </div>
-    </section>
-
-    <section class="panel small">
-      <h2>Заметки</h2>
-      <ul id="sourceReports"></ul>
-      <p class="muted">
-        Мяу мяу мяу мяу мяу мяу
-        Кто прочитал, тот лох... 
-      </p>
+      <div class="source-box"><h3>Состояние источников в текущем snapshot</h3><ul id="source-report"></ul></div>
     </section>
   </main>
 
-  <script src="./app.js?v=integer-scu-4"></script>
+  <footer><div class="brand"><span class="brand-mark">◇</span><span>Cargo<b>Nav</b></span></div><p>Некоммерческий фанатский инструмент. Не связан с Cloud Imperium Games / Roberts Space Industries.</p><p>Данные: <a href="https://uexcorp.space" target="_blank" rel="noreferrer">UEX</a> · <a href="https://sc-trade.tools" target="_blank" rel="noreferrer">SC Trade Tools</a>. Community-maintained data may differ from live servers.</p></footer>
+
+  <dialog id="detail-dialog" class="detail-dialog">
+    <div class="dialog-head"><div><p class="eyebrow">Разбор рейса</p><h2 id="detail-title">Маршрут</h2><p id="detail-subtitle" class="muted"></p></div><button id="detail-close" class="icon-btn" aria-label="Закрыть">×</button></div>
+    <dl id="detail-grid" class="detail-grid"></dl>
+    <div class="detail-notes"><p id="detail-path"></p><p id="detail-distance"></p></div>
+    <div class="history-head"><h3>История цен</h3><button id="history-button" class="small-btn">История цены</button></div>
+    <div id="history-panel"></div>
+  </dialog>
+
+  <script type="module" src="./app.js"></script>
 </body>
 </html>
