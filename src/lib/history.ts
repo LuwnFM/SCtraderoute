@@ -3,7 +3,7 @@ import type { TradeRoute } from './routes'
 type CompactHistoryRow = [number, number, number]
 type HistoryEntry = { fetchedAt?: string; rows?: CompactHistoryRow[] }
 type HistoryCache = { meta?: { generatedAt?: string; cachedPairs?: number }; series?: Record<string, HistoryEntry> }
-export type HistoryPoint = { t: number; v: number; kind: 'buy' | 'sell' }
+export type HistoryPoint = { t: number; v: number; kind: 'buy' | 'sell'; locationName: string }
 export type RouteHistoryResult = { points: HistoryPoint[]; missing: string[]; generatedAt?: string }
 
 let cachePromise: Promise<HistoryCache> | null = null
@@ -31,10 +31,10 @@ async function loadCache(): Promise<HistoryCache> {
   return cachePromise
 }
 
-function points(entry: HistoryEntry | undefined, kind: 'buy' | 'sell'): HistoryPoint[] {
+function points(entry: HistoryEntry | undefined, kind: 'buy' | 'sell', locationName: string): HistoryPoint[] {
   const index = kind === 'buy' ? 1 : 2
   return (entry?.rows || [])
-    .map((row) => ({ t: Number(row?.[0] || 0), v: Number(row?.[index] || 0), kind }))
+    .map((row) => ({ t: Number(row?.[0] || 0), v: Number(row?.[index] || 0), kind, locationName }))
     .filter((point) => point.t > 0 && point.v > 0)
 }
 
@@ -49,6 +49,9 @@ export async function loadRouteHistory(route: TradeRoute): Promise<RouteHistoryR
   const destination = toKey ? cache.series?.[toKey] : undefined
   if (fromKey && !origin) missing.push(`${route.from.name}: история ещё не попала в кэш`)
   if (toKey && !destination) missing.push(`${route.to.name}: история ещё не попала в кэш`)
-  const result = [...points(origin, 'buy'), ...points(destination, 'sell')].sort((a, b) => a.t - b.t)
+  const result = [
+    ...points(origin, 'buy', route.from.name),
+    ...points(destination, 'sell', route.to.name),
+  ].sort((a, b) => a.t - b.t)
   return { points: result, missing, generatedAt: cache.meta?.generatedAt }
 }
