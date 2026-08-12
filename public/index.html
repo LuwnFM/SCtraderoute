@@ -9,6 +9,7 @@
   <link rel="icon" href="./favicon.svg" type="image/svg+xml" />
   <link rel="stylesheet" href="./styles.css" />
   <link rel="stylesheet" href="./design.css" />
+  <link rel="stylesheet" href="./design-fix.css" />
 </head>
 <body>
   <div class="stars" aria-hidden="true"></div>
@@ -42,38 +43,73 @@
       </dl>
     </section>
 
-    <section id="terminal" class="section border-top">
-      <p class="eyebrow">Шаг 1</p>
+    <section id="terminal" class="section border-top terminal-section">
+      <p class="eyebrow section-step">Шаг 1</p>
       <h2>Настройте параметры полёта</h2>
-      <div class="panel filter-panel">
-        <div class="panel-head"><div><h3>Панель расчёта рейса</h3><p>Найдено маршрутов: <b id="found-count">0</b> · данные обновлены <span id="snapshot-time">—</span></p></div><div class="row"><button id="refresh-data" class="small-btn">Обновить</button><button id="reset-filters" class="small-btn ghost">Сброс</button></div></div>
-        <div class="filter-grid">
+      <div class="panel filter-panel poehali-filter-panel">
+        <div class="panel-head">
+          <div>
+            <h3>Панель расчёта рейса</h3>
+            <p>Найдено маршрутов: <b id="found-count">0</b> · данные обновлены <span id="snapshot-time">—</span></p>
+          </div>
+          <div class="row panel-actions">
+            <button id="refresh-data" class="small-btn button-with-icon"><span aria-hidden="true">↻</span> Обновить</button>
+            <button id="reset-filters" class="small-btn ghost button-with-icon"><span aria-hidden="true">↶</span> Сброс</button>
+          </div>
+        </div>
+
+        <div class="filter-grid poehali-filter-grid">
           <div class="filter-col">
             <label>Корабль<select id="ship"><option value="custom">Свой объём трюма</option></select></label>
-            <label>Вместимость, SCU<input id="capacity" type="number" min="1" max="100000" value="96" /></label>
-            <label>Бюджет, aUEC<input id="budget" type="number" min="0" step="10000" value="1000000" /></label>
-            <label>Размер контейнера<select id="container-size"><option value="0">Авто / любой</option><option>1</option><option>2</option><option>4</option><option>8</option><option>16</option><option>24</option><option>32</option></select></label>
+
+            <div class="field-block">
+              <div class="field-heading-row">
+                <label for="capacity">Вместимость, SCU</label>
+                <input id="capacity" class="compact-number" type="number" min="1" max="100000" value="96" />
+              </div>
+              <input id="capacity-range" class="cargo-range" type="range" min="1" max="12000" step="1" value="96" aria-label="Вместимость трюма в SCU" />
+            </div>
+
+            <div class="field-block">
+              <div class="field-heading-row">
+                <label for="budget">Бюджет, aUEC</label>
+                <input id="budget" class="compact-number budget-number" type="number" min="0" step="10000" value="1000000" />
+              </div>
+              <p class="field-hint">0 — считать без ограничения по деньгам.</p>
+            </div>
           </div>
+
           <div class="filter-col">
             <label>Товар<select id="commodity"><option value="all">Все товары</option></select></label>
             <div class="split"><label>Система закупки<select id="system-from"><option value="all">Любая</option></select></label><label>Система сбыта<select id="system-to"><option value="all">Любая</option></select></label></div>
-            <div class="split"><label>Точка закупки<select id="terminal-from"><option value="all">Любая точка</option></select></label><label>Точка сбыта<select id="terminal-to"><option value="all">Любая точка</option></select></label></div>
-            <label>Поиск<input id="search" type="search" placeholder="Area18, Gold, Levski…" /></label>
+            <label>Поиск по точке или товару<span class="search-wrap"><span class="search-glyph" aria-hidden="true">⌕</span><input id="search" type="search" placeholder="Например: Area18, Laranite" /></span></label>
           </div>
+
           <div class="filter-col">
             <label>Сортировка<select id="sort"></select></label>
-            <div class="switch-box">
-              <label class="check"><input id="only-legal" type="checkbox" />Исключить контрабанду</label>
-              <label class="check"><input id="same-system" type="checkbox" />Не покидать систему</label>
-              <label class="check"><input id="known-availability" type="checkbox" />Только известные supply + demand</label>
-              <label class="check"><input id="favorites-only" type="checkbox" />Только избранные маршруты</label>
+            <div class="switch-box poehali-switch-box">
+              <label class="switch-line"><span>Только с известным supply + demand</span><span class="switch-control"><input id="known-availability" type="checkbox" /><i></i></span></label>
+              <label class="switch-line"><span>Исключить контрабанду</span><span class="switch-control"><input id="only-legal" type="checkbox" /><i></i></span></label>
+              <label class="switch-line"><span>Не покидать систему</span><span class="switch-control"><input id="same-system" type="checkbox" /><i></i></span></label>
             </div>
-            <div class="split"><label>Мин. прибыль<input id="min-profit" type="number" min="0" step="5000" value="0" /></label><label>Мин. ROI, %<input id="min-roi" type="number" min="0" step="1" value="0" /></label></div>
-            <div class="split"><label>Мин. aUEC/SCU<input id="min-profit-scu" type="number" min="0" value="0" /></label><label>Макс. возраст, ч<input id="max-age" type="number" min="0" placeholder="0 = любой" value="0" /></label></div>
-            <label>Макс. расстояние, GM<input id="max-distance" type="number" min="0" placeholder="0 = любое/неизвестное" value="0" /></label>
+            <button id="advanced-toggle" type="button" class="advanced-toggle" aria-expanded="false"><span class="advanced-arrow" aria-hidden="true">⌄</span> Дополнительно</button>
           </div>
         </div>
-        <div class="preset-bar"><input id="preset-name" placeholder="Название пресета" /><button id="save-preset" class="small-btn">Сохранить пресет</button><select id="preset-select"><option value="">Выберите пресет</option></select><button id="apply-preset" class="small-btn ghost">Применить</button><button id="delete-preset" class="small-btn danger-outline">Удалить</button></div>
+
+        <div id="advanced-panel" class="advanced-panel" hidden>
+          <div class="advanced-grid">
+            <label>Точка закупки<select id="terminal-from"><option value="all">Любая точка</option></select></label>
+            <label>Точка сбыта<select id="terminal-to"><option value="all">Любая точка</option></select></label>
+            <label>Размер контейнера<select id="container-size"><option value="0">Авто / любой</option><option>1</option><option>2</option><option>4</option><option>8</option><option>16</option><option>24</option><option>32</option></select></label>
+            <label class="switch-line advanced-switch"><span>Только избранные маршруты</span><span class="switch-control"><input id="favorites-only" type="checkbox" /><i></i></span></label>
+            <label>Мин. прибыль<input id="min-profit" type="number" min="0" step="5000" value="0" /></label>
+            <label>Мин. ROI, %<input id="min-roi" type="number" min="0" step="1" value="0" /></label>
+            <label>Мин. aUEC/SCU<input id="min-profit-scu" type="number" min="0" value="0" /></label>
+            <label>Макс. возраст, ч<input id="max-age" type="number" min="0" placeholder="0 = любой" value="0" /></label>
+            <label>Макс. расстояние, GM<input id="max-distance" type="number" min="0" placeholder="0 = любое/неизвестное" value="0" /></label>
+          </div>
+          <div class="preset-bar poehali-preset-bar"><input id="preset-name" placeholder="Название пресета" /><button id="save-preset" class="small-btn">Сохранить пресет</button><select id="preset-select"><option value="">Выберите пресет</option></select><button id="apply-preset" class="small-btn ghost">Применить</button><button id="delete-preset" class="small-btn danger-outline">Удалить</button></div>
+        </div>
       </div>
       <div id="summary" class="summary-grid"></div>
     </section>
@@ -113,6 +149,7 @@
     <div id="history-panel"></div>
   </dialog>
 
+  <script type="module" src="./design-ui.js"></script>
   <script type="module" src="./app.js"></script>
 </body>
 </html>
