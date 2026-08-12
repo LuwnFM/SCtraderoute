@@ -5,7 +5,6 @@ import path from 'node:path'
 export default defineConfig({
   base: '/SCtraderoute/',
   plugins: [react()],
-  resolve: {
-    alias: { '@': path.resolve(__dirname, './src') },
-  },
+  resolve: { alias: { '@': path.resolve(__dirname, './src') } },
+  build: { outDir: 'dist', emptyOutDir: true },
 })
