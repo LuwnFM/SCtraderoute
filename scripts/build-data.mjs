@@ -2,6 +2,7 @@ import fs from 'node:fs/promises'
 import path from 'node:path'
 import { fileURLToPath } from 'node:url'
 import { DEFAULT_FILTERS, commodityKey, computeRoutes, normalizeName, parseTimestamp, systemFromLocationPath, terminalKey } from '../public/lib/trade-core.js'
+import { filterCandidatePriceOutliers } from './lib/price-quality.mjs'
 
 const ROOT = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '..')
 const OUTPUT = path.join(ROOT, 'public/data/trade-snapshot.json')
@@ -211,6 +212,21 @@ async function main() {
 
   let sc = null
   try { sc = await fetchScTrade(base) } catch (e) { report.push({ name: 'SC Trade Tools', ok: false, note: e instanceof Error ? e.message : String(e) }) }
+
+  if (sc) {
+    const quality = filterCandidatePriceOutliers(sc.listings, base.listings)
+    sc.listings = quality.accepted
+    const reasons = quality.rejected.reduce((acc, item) => {
+      acc[item.reason] = (acc[item.reason] || 0) + 1
+      return acc
+    }, {})
+    const reasonText = Object.entries(reasons).map(([reason, count]) => `${reason}: ${count}`).join(', ')
+    report.push({
+      name: 'SC Trade Tools quality',
+      ok: true,
+      note: `${quality.accepted.length} принято · ${quality.rejected.length} выбросов отклонено${reasonText ? ` (${reasonText})` : ''}`,
+    })
+  }
 
   const snapshot = {
     meta: { generatedAt: nowIso(), gameVersion: base.gameVersion || existing?.meta?.gameVersion || null, sourceReports: report, schemaVersion: 2 },
