@@ -1,7 +1,10 @@
 export const TRAVEL_TIME_MODEL = Object.freeze({
-  secondsPerGm: 4.37,
-  groundEndpointSeconds: 75,
-  jumpSeconds: 90,
+  // Calibrated against the UEX distance/ETA pairs supplied with the route table:
+  // 23 Gm ~= 3m19s, 81 Gm ~= 11m39s, 151 Gm ~= 21m44s.
+  // Keep this deliberately simple until we can use a documented per-ship timing source.
+  secondsPerGm: 8.635,
+  groundEndpointSeconds: 0,
+  jumpSeconds: 0,
   minimumSeconds: 30,
 })
 
@@ -33,12 +36,14 @@ export function estimateTravelTime(route, model = TRAVEL_TIME_MODEL) {
   const jumpCount = Math.max(0, Number(route?.path?.jumpCount) || 0)
   const groundEndpoints = [route?.from, route?.to].filter((terminal) => isLikelyGroundTerminal(terminal)).length
   const cruiseSeconds = distanceGm * Number(model.secondsPerGm)
+  // The current beta intentionally does not invent loading, atmospheric or jump-point
+  // overhead. Those are exposed in the result for a future documented model.
   const endpointSeconds = groundEndpoints * Number(model.groundEndpointSeconds)
   const jumpSeconds = jumpCount * Number(model.jumpSeconds)
   const totalSeconds = Math.max(Number(model.minimumSeconds), Math.round(cruiseSeconds + endpointSeconds + jumpSeconds))
   const profit = Number(route?.profit)
   const profitPerMinute = Number.isFinite(profit) && totalSeconds > 0 ? profit / (totalSeconds / 60) : null
-  return { totalSeconds, profitPerMinute, distanceGm, jumpCount, groundEndpoints, cruiseSeconds, endpointSeconds, jumpSeconds, model: 'distance-beta-v1' }
+  return { totalSeconds, profitPerMinute, distanceGm, jumpCount, groundEndpoints, cruiseSeconds, endpointSeconds, jumpSeconds, model: 'uex-distance-beta-v2' }
 }
 
 export function formatTravelDuration(totalSeconds) {

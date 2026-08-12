@@ -35,10 +35,12 @@ function candidatePairs(snapshot) {
     if (isPriority) priority.add(pair.key)
   }
 
+  // Put the current large-hauler / 1M aUEC use case first so the first
+  // production cache warm-up covers the routes users are actually opening now.
   const profiles = [
-    { capacity: 96, budget: 1_000_000 },
-    { capacity: 696, budget: 1_000_000 },
     { capacity: 4608, budget: 1_000_000 },
+    { capacity: 696, budget: 1_000_000 },
+    { capacity: 96, budget: 1_000_000 },
     { capacity: 4608, budget: 0 },
   ]
   for (const profile of profiles) {
