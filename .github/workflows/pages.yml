@@ -24,8 +24,8 @@ jobs:
       - uses: actions/setup-node@v4
         with:
           node-version: 22
-          cache: npm
-      - run: npm ci
+      - name: Install dependencies
+        run: npm install --no-audit --no-fund
       - name: Refresh UEX + SC Trade Tools snapshot
         run: npm run build:data
         env:
@@ -33,11 +33,12 @@ jobs:
           SCTRADE_CROWD_MAX_PAGES: '20'
           UEX_DISTANCE_PAIRS: '80'
       - run: npm test
+      - run: npm run typecheck
       - run: npm run build
       - uses: actions/configure-pages@v5
       - uses: actions/upload-pages-artifact@v3
         with:
-          path: public
+          path: dist
   deploy:
     environment:
       name: github-pages
