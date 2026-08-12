@@ -9,6 +9,8 @@ import { loadRouteHistory, type HistoryPoint } from '@/lib/history'
 import { estimateTravelTime, formatTravelDuration } from '@/lib/travel-time'
 
 const PAGE_SIZE = 25
+const HISTORY_TIME_FORMAT = new Intl.DateTimeFormat('ru-RU', { year: 'numeric', month: '2-digit', day: '2-digit', hour: '2-digit', minute: '2-digit' })
+const HISTORY_DATE_FORMAT = new Intl.DateTimeFormat('ru-RU', { year: 'numeric', month: '2-digit', day: '2-digit' })
 
 interface Props {
   routes: TradeRoute[]
@@ -63,9 +65,114 @@ export function RouteList({ routes, loading, error, onRetry, favorites, onToggle
       })}
     </ol>
     {limit < routes.length && <div className="mt-6 text-center"><Button variant="outline" onClick={() => setLimit((l) => l + PAGE_SIZE)} className="font-mono uppercase tracking-[0.12em]"><Icon name="Plus" size={16} className="mr-2" />Показать ещё {Math.min(PAGE_SIZE, routes.length - limit)}</Button><p className="mt-2 font-mono text-xs text-muted-foreground">Показано {formatNumber(visible.length)} из {formatNumber(routes.length)}</p></div>}
-    <Dialog open={!!detail} onOpenChange={(o) => !o && setDetail(null)}><DialogContent className="max-h-[90vh] max-w-2xl overflow-y-auto">{detail && <><DialogHeader><DialogTitle className="font-display uppercase tracking-[0.1em]">{detail.commodity.name}</DialogTitle><DialogDescription className="font-mono text-xs">{detail.from.name} → {detail.to.name}</DialogDescription></DialogHeader><dl className="grid grid-cols-2 gap-px border border-border bg-border font-mono text-sm sm:grid-cols-3"><Cell label="Груз" value={`${formatNumber(detail.units)} SCU`} /><Cell label="Вложения" value={`${formatNumber(detail.investment)} aUEC`} /><Cell label="Выручка" value={`${formatNumber(detail.revenue)} aUEC`} /><Cell label="Прибыль" value={`+${formatNumber(detail.profit)} aUEC`} accent /><Cell label="Прибыль за SCU" value={`${formatNumber(detail.profitPerScu)} aUEC`} /><Cell label="ROI" value={`${detail.roi.toFixed(1)} %`} /><Cell label="Supply" value={detail.supply == null ? 'нет данных' : `${formatNumber(detail.supply)} SCU`} /><Cell label="Demand" value={detail.demand == null ? 'нет данных' : `${formatNumber(detail.demand)} SCU`} /><Cell label="Ограничивает" value={detail.limitedBy || '—'} /><Cell label="Цена покупки" value={formatAge(detail.buyUpdatedAt)} /><Cell label="Цена продажи" value={formatAge(detail.sellUpdatedAt)} /><Cell label="Расстояние" value={detail.distanceGm == null ? 'нет данных' : `${formatNumber(detail.distanceGm, 1)} Gm`} /><Cell label="ETA β" value={detailTravel ? `~${formatTravelDuration(detailTravel.totalSeconds)}` : 'нет данных'} /><Cell label="Прибыль/мин β" value={detailTravel?.profitPerMinute == null ? 'нет данных' : `~${formatNumber(detailTravel.profitPerMinute)} aUEC/мин`} /></dl><div className="space-y-1 font-mono text-xs text-muted-foreground"><p>{detail.sameSystem ? `Внутрисистемный маршрут: ${detail.from.system}` : `Путь: ${detail.path.systems.join(' → ')}${detail.path.jumpCount != null ? ` · переходов: ${detail.path.jumpCount}` : ''}`}</p><p>Источники: {detail.sources.length ? detail.sources.join(' + ') : 'не указаны'}.</p>{detail.availabilityUnknown && <p className="text-primary">Supply/demand известны не полностью — учитывайте это перед крупной сделкой.</p>}{detailTravel && <p className="text-primary/80">ETA β — экспериментальная оценка по расстоянию UEX, откалиброванная по доступным парам Gm/ETA. Она не включает loading/wait time и не является точным timeInSeconds SC Trade Tools.</p>}</div><div className="border-t border-border pt-4"><div className="flex flex-wrap items-center justify-between gap-3"><div><h3 className="font-display uppercase tracking-[0.08em]">История цен</h3><p className="font-mono text-[11px] text-muted-foreground">Реальные точки UEX из same-origin кэша CargoNav; браузер больше не обращается к UEX напрямую.</p></div><Button variant="outline" size="sm" disabled={historyLoading || !(detail.commodity.uexId && (detail.from.uexId || detail.to.uexId))} onClick={loadHistory} className="font-mono text-xs uppercase">{historyLoading ? 'Загрузка…' : 'История цены'}</Button></div>{historyError && <p className="mt-3 font-mono text-xs text-destructive">{historyError}</p>}{historyNotice && <p className="mt-3 font-mono text-xs text-primary">{historyNotice}</p>}{history && <HistoryChart points={history} />}{!(detail.commodity.uexId && (detail.from.uexId || detail.to.uexId)) && <p className="mt-3 font-mono text-xs text-muted-foreground">Для этой точки нет UEX ID, поэтому UEX history недоступна.</p>}</div></>}</DialogContent></Dialog>
+    <Dialog open={!!detail} onOpenChange={(o) => !o && setDetail(null)}><DialogContent className="max-h-[90vh] max-w-2xl overflow-y-auto">{detail && <><DialogHeader><DialogTitle className="font-display uppercase tracking-[0.1em]">{detail.commodity.name}</DialogTitle><DialogDescription className="font-mono text-xs">{detail.from.name} → {detail.to.name}</DialogDescription></DialogHeader><dl className="grid grid-cols-2 gap-px border border-border bg-border font-mono text-sm sm:grid-cols-3"><Cell label="Груз" value={`${formatNumber(detail.units)} SCU`} /><Cell label="Вложения" value={`${formatNumber(detail.investment)} aUEC`} /><Cell label="Выручка" value={`${formatNumber(detail.revenue)} aUEC`} /><Cell label="Прибыль" value={`+${formatNumber(detail.profit)} aUEC`} accent /><Cell label="Прибыль за SCU" value={`${formatNumber(detail.profitPerScu)} aUEC`} /><Cell label="ROI" value={`${detail.roi.toFixed(1)} %`} /><Cell label="Supply" value={detail.supply == null ? 'нет данных' : `${formatNumber(detail.supply)} SCU`} /><Cell label="Demand" value={detail.demand == null ? 'нет данных' : `${formatNumber(detail.demand)} SCU`} /><Cell label="Ограничивает" value={detail.limitedBy || '—'} /><Cell label="Цена покупки" value={formatAge(detail.buyUpdatedAt)} /><Cell label="Цена продажи" value={formatAge(detail.sellUpdatedAt)} /><Cell label="Расстояние" value={detail.distanceGm == null ? 'нет данных' : `${formatNumber(detail.distanceGm, 1)} Gm`} /><Cell label="ETA β" value={detailTravel ? `~${formatTravelDuration(detailTravel.totalSeconds)}` : 'нет данных'} /><Cell label="Прибыль/мин β" value={detailTravel?.profitPerMinute == null ? 'нет данных' : `~${formatNumber(detailTravel.profitPerMinute)} aUEC/мин`} /></dl><div className="space-y-1 font-mono text-xs text-muted-foreground"><p>{detail.sameSystem ? `Внутрисистемный маршрут: ${detail.from.system}` : `Путь: ${detail.path.systems.join(' → ')}${detail.path.jumpCount != null ? ` · переходов: ${detail.path.jumpCount}` : ''}`}</p><p>Источники: {detail.sources.length ? detail.sources.join(' + ') : 'не указаны'}.</p>{detail.availabilityUnknown && <p className="text-primary">Supply/demand известны не полностью — учитывайте это перед крупной сделкой.</p>}{detailTravel && <p className="text-primary/80">ETA β — экспериментальная оценка по расстоянию UEX, откалиброванная по доступным парам Gm/ETA. Она не включает loading/wait time и не является точным timeInSeconds SC Trade Tools.</p>}</div><div className="border-t border-border pt-4"><div className="flex flex-wrap items-center justify-between gap-3"><div><h3 className="font-display uppercase tracking-[0.08em]">История цен</h3><p className="font-mono text-[11px] text-muted-foreground">Реальные точки UEX из same-origin кэша CargoNav; линия только соединяет реальные снимки цен между собой.</p></div><Button variant="outline" size="sm" disabled={historyLoading || !(detail.commodity.uexId && (detail.from.uexId || detail.to.uexId))} onClick={loadHistory} className="font-mono text-xs uppercase">{historyLoading ? 'Загрузка…' : 'История цены'}</Button></div>{historyError && <p className="mt-3 font-mono text-xs text-destructive">{historyError}</p>}{historyNotice && <p className="mt-3 font-mono text-xs text-primary">{historyNotice}</p>}{history && <HistoryChart points={history} />}{!(detail.commodity.uexId && (detail.from.uexId || detail.to.uexId)) && <p className="mt-3 font-mono text-xs text-muted-foreground">Для этой точки нет UEX ID, поэтому UEX history недоступна.</p>}</div></>}</DialogContent></Dialog>
   </>
 }
 
-function HistoryChart({ points }: { points: HistoryPoint[] }) { const useful = points.filter((p) => p.t > 0 && p.v > 0); const geometry = useMemo(() => { if (useful.length < 2) return null; const minT = Math.min(...useful.map((p) => p.t)), maxT = Math.max(...useful.map((p) => p.t)), minV = Math.min(...useful.map((p) => p.v)), maxV = Math.max(...useful.map((p) => p.v)), W = 720, H = 220, P = 24; const x=(t:number)=>P+((t-minT)/Math.max(1,maxT-minT))*(W-P*2); const y=(v:number)=>H-P-((v-minV)/Math.max(1,maxV-minV))*(H-P*2); const path=(kind:'buy'|'sell')=>useful.filter((p)=>p.kind===kind).map((p,i)=>`${i?'L':'M'}${x(p.t).toFixed(1)},${y(p.v).toFixed(1)}`).join(' '); return {W,H,P,minV,maxV,buy:path('buy'),sell:path('sell')} }, [useful]); if (!geometry) return <p className="mt-3 font-mono text-xs text-muted-foreground">Недостаточно исторических данных для графика.</p>; return <div className="mt-4 border border-border bg-card/50 p-3"><svg viewBox={`0 0 ${geometry.W} ${geometry.H}`} role="img" aria-label="История цен UEX" className="h-auto w-full"><path d={`M${geometry.P},${geometry.H-geometry.P} H${geometry.W-geometry.P}`} stroke="hsl(var(--border))" fill="none"/><path d={geometry.buy} stroke="hsl(var(--accent))" strokeWidth="2" fill="none"/><path d={geometry.sell} stroke="hsl(var(--primary))" strokeWidth="2" fill="none"/></svg><div className="flex flex-wrap gap-4 font-mono text-[10px] text-muted-foreground"><span className="text-accent">● покупка origin</span><span className="text-primary">● продажа destination</span><span>{formatNumber(geometry.minV)}–{formatNumber(geometry.maxV)} aUEC/SCU</span></div></div> }
+function historyPointKey(point: HistoryPoint, index: number) {
+  return `${point.kind}:${point.locationName}:${point.t}:${point.v}:${index}`
+}
+
+function historyDateValue(timestamp: number) {
+  const milliseconds = timestamp < 1_000_000_000_000 ? timestamp * 1000 : timestamp
+  return new Date(milliseconds)
+}
+
+function formatHistoryTimestamp(timestamp: number) {
+  return HISTORY_TIME_FORMAT.format(historyDateValue(timestamp))
+}
+
+function formatHistoryDate(timestamp: number) {
+  return HISTORY_DATE_FORMAT.format(historyDateValue(timestamp))
+}
+
+function historyPointAria(point: HistoryPoint) {
+  const side = point.kind === 'buy' ? 'Цена покупки' : 'Цена продажи'
+  return `${side} по UEX, ${point.locationName}, ${formatHistoryTimestamp(point.t)}, ${formatNumber(point.v)} aUEC за SCU`
+}
+
+function HistoryChart({ points }: { points: HistoryPoint[] }) {
+  const useful = points.filter((point) => point.t > 0 && point.v > 0)
+  const [selectedKey, setSelectedKey] = useState<string | null>(null)
+  useEffect(() => { setSelectedKey(null) }, [points])
+
+  const geometry = useMemo(() => {
+    if (useful.length < 2) return null
+    const minT = Math.min(...useful.map((point) => point.t))
+    const maxT = Math.max(...useful.map((point) => point.t))
+    const minV = Math.min(...useful.map((point) => point.v))
+    const maxV = Math.max(...useful.map((point) => point.v))
+    const W = 720
+    const H = 220
+    const P = 24
+    const x = (timestamp: number) => P + ((timestamp - minT) / Math.max(1, maxT - minT)) * (W - P * 2)
+    const y = (value: number) => H - P - ((value - minV) / Math.max(1, maxV - minV)) * (H - P * 2)
+    const plotPoints = useful.map((point, index) => ({ point, key: historyPointKey(point, index), x: x(point.t), y: y(point.v) }))
+    const path = (kind: 'buy' | 'sell') => plotPoints.filter((item) => item.point.kind === kind).map((item, index) => `${index ? 'L' : 'M'}${item.x.toFixed(1)},${item.y.toFixed(1)}`).join(' ')
+    return { W, H, P, minT, maxT, minV, maxV, plotPoints, buy: path('buy'), sell: path('sell') }
+  }, [useful])
+
+  if (!geometry) return <p className="mt-3 font-mono text-xs text-muted-foreground">Недостаточно исторических данных для графика.</p>
+
+  const selected = geometry.plotPoints.find((item) => item.key === selectedKey) || null
+  const buyCount = geometry.plotPoints.filter((item) => item.point.kind === 'buy').length
+  const sellCount = geometry.plotPoints.length - buyCount
+
+  return <div className="mt-4 border border-border bg-card/50 p-3">
+    <svg viewBox={`0 0 ${geometry.W} ${geometry.H}`} role="group" aria-label="Интерактивная история цен UEX. Каждая точка является реальным снимком цены и доступна по нажатию или с клавиатуры." className="h-auto w-full touch-manipulation">
+      <path d={`M${geometry.P},${geometry.H - geometry.P} H${geometry.W - geometry.P}`} stroke="hsl(var(--border))" fill="none" />
+      {selected && <>
+        <path d={`M${selected.x},${geometry.P} V${geometry.H - geometry.P}`} stroke="hsl(var(--muted-foreground))" strokeWidth="1" strokeDasharray="4 5" opacity="0.55" pointerEvents="none" />
+        <path d={`M${geometry.P},${selected.y} H${geometry.W - geometry.P}`} stroke="hsl(var(--muted-foreground))" strokeWidth="1" strokeDasharray="4 5" opacity="0.35" pointerEvents="none" />
+      </>}
+      <path d={geometry.buy} stroke="hsl(var(--accent))" strokeWidth="2" fill="none" pointerEvents="none" />
+      <path d={geometry.sell} stroke="hsl(var(--primary))" strokeWidth="2" fill="none" pointerEvents="none" />
+      {geometry.plotPoints.map((item) => {
+        const selectedPoint = item.key === selectedKey
+        const fill = item.point.kind === 'buy' ? 'hsl(var(--accent))' : 'hsl(var(--primary))'
+        return <g key={item.key}>
+          <circle cx={item.x} cy={item.y} r={selectedPoint ? 5 : 3} fill={fill} stroke={selectedPoint ? 'hsl(var(--foreground))' : 'hsl(var(--card))'} strokeWidth={selectedPoint ? 2 : 1.25} pointerEvents="none" />
+          <circle
+            cx={item.x}
+            cy={item.y}
+            r="14"
+            fill="transparent"
+            stroke="transparent"
+            pointerEvents="all"
+            role="button"
+            tabIndex={0}
+            aria-label={historyPointAria(item.point)}
+            aria-pressed={selectedPoint}
+            onPointerEnter={() => setSelectedKey(item.key)}
+            onClick={() => setSelectedKey(item.key)}
+            onFocus={() => setSelectedKey(item.key)}
+            onKeyDown={(event) => {
+              if (event.key === 'Enter' || event.key === ' ') {
+                event.preventDefault()
+                setSelectedKey(item.key)
+              }
+            }}
+          ><title>{historyPointAria(item.point)}</title></circle>
+        </g>
+      })}
+    </svg>
+
+    <div className="mt-1 flex flex-wrap gap-x-4 gap-y-1 font-mono text-[10px] text-muted-foreground">
+      <span className="text-accent">● покупка origin · {buyCount} точ.</span>
+      <span className="text-primary">● продажа destination · {sellCount} точ.</span>
+      <span>{formatNumber(geometry.minV)}–{formatNumber(geometry.maxV)} aUEC/SCU</span>
+      <span>{formatHistoryDate(geometry.minT)}–{formatHistoryDate(geometry.maxT)}</span>
+    </div>
+
+    {selected ? <div className="mt-3 grid gap-2 border border-border bg-background/60 p-3 font-mono text-xs sm:grid-cols-[1fr_auto] sm:items-center">
+      <div>
+        <p className={selected.point.kind === 'buy' ? 'text-accent' : 'text-primary'}>{selected.point.kind === 'buy' ? 'ПОКУПКА · ORIGIN' : 'ПРОДАЖА · DESTINATION'}</p>
+        <p className="mt-1 text-foreground">{selected.point.locationName}</p>
+        <p className="mt-1 text-muted-foreground">{formatHistoryTimestamp(selected.point.t)} · реальный снимок UEX</p>
+      </div>
+      <p className="tabular-nums text-sm font-semibold text-foreground sm:text-right">{formatNumber(selected.point.v)} aUEC/SCU</p>
+    </div> : <p className="mt-3 font-mono text-[10px] text-muted-foreground">Нажмите на любую точку графика, чтобы увидеть точную дату, терминал и цену. На компьютере точки также доступны по Tab/Enter.</p>}
+  </div>
+}
+
 function Cell({ label, value, accent }: { label: string; value: string; accent?: boolean }) { return <div className="bg-card p-3"><dt className="text-[10px] uppercase tracking-[0.16em] text-muted-foreground">{label}</dt><dd className={`mt-1 tabular-nums ${accent ? 'text-success font-semibold' : 'text-foreground'}`}>{value}</dd></div> }
