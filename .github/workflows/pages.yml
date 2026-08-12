@@ -38,7 +38,7 @@ jobs:
         env:
           UEX_API_BASE: 'https://api.uexcorp.uk/2.0'
           SCTRADE_CROWD_MAX_PAGES: '20'
-          UEX_DISTANCE_PAIRS: '70'
+          UEX_DISTANCE_PAIRS: '55'
       - name: Refresh rolling UEX price history cache
         run: npm run build:history
         env:
