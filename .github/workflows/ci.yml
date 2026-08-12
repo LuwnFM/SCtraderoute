@@ -24,6 +24,14 @@ jobs:
           UEX_API_BASE: 'https://api.uexcorp.uk/2.0'
           SCTRADE_CROWD_MAX_PAGES: '2'
           UEX_DISTANCE_PAIRS: '5'
+      - name: Verify UEX history aggregation
+        run: |
+          npm run build:history
+          node -e "const fs=require('node:fs');const x=JSON.parse(fs.readFileSync('public/data/trade-history.json'));if(!Object.keys(x.series||{}).length)process.exit(1)"
+        env:
+          UEX_API_BASE: 'https://api.uexcorp.uk/2.0'
+          UEX_HISTORY_PAIRS: '3'
+          UEX_HISTORY_REFRESH_HOURS: '1'
       - run: npm test
       - run: npm run typecheck
       - run: npm run build
