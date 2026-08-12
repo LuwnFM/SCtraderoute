@@ -13,5 +13,11 @@ jobs:
           node-version: 22
           cache: npm
       - run: npm ci
+      - name: Verify live data aggregation
+        run: npm run build:data
+        env:
+          UEX_API_BASE: 'https://api.uexcorp.uk/2.0'
+          SCTRADE_CROWD_MAX_PAGES: '2'
+          UEX_DISTANCE_PAIRS: '5'
       - run: npm test
       - run: npm run build

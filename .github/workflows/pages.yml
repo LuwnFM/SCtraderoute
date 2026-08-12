@@ -29,6 +29,7 @@ jobs:
       - name: Refresh UEX + SC Trade Tools snapshot
         run: npm run build:data
         env:
+          UEX_API_BASE: 'https://api.uexcorp.uk/2.0'
           SCTRADE_CROWD_MAX_PAGES: '20'
           UEX_DISTANCE_PAIRS: '80'
       - run: npm test
