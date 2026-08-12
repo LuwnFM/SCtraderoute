@@ -3,38 +3,42 @@
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-  <meta name="theme-color" content="#0a111c" />
+  <meta name="theme-color" content="#0b1220" />
   <meta name="description" content="CargoNav — калькулятор торговых маршрутов Star Citizen по данным UEX и SC Trade Tools." />
-  <title>CargoNav — маршруты Star Citizen</title>
+  <title>CargoNav — торговые маршруты Star Citizen</title>
   <link rel="icon" href="./favicon.svg" type="image/svg+xml" />
   <link rel="stylesheet" href="./styles.css" />
+  <link rel="stylesheet" href="./design.css" />
 </head>
 <body>
   <div class="stars" aria-hidden="true"></div>
   <header class="topbar">
-    <a class="brand" href="#top"><span class="brand-mark">◇</span><span>Cargo<b>Nav</b></span></a>
-    <nav>
-      <button data-scroll="terminal">Расчёт</button>
+    <a class="brand" href="#top">
+      <span class="brand-mark" aria-hidden="true"><svg viewBox="0 0 24 24"><path d="M4.5 16.5c-1.5 1.5-2 4.5-2 4.5s3-.5 4.5-2m1-3L5 13l2-4 4.5-1.5M8 16l3 3 4-2 1.5-4.5M14 10l-4-4c3.5-3.5 7.5-3.5 10-3-0.5 2.5-0.5 6.5-4 10Z"/><circle cx="15.5" cy="7.5" r="1.5"/></svg></span>
+      <span class="brand-copy"><span class="brand-name">Cargo<b>Nav</b></span><span class="brand-sub">trade terminal</span></span>
+    </a>
+    <nav aria-label="Основная навигация">
+      <button data-scroll="terminal">Терминал</button>
       <button data-scroll="routes">Маршруты</button>
       <button data-scroll="fleet">Флот</button>
-      <button data-scroll="faq">FAQ</button>
+      <button data-scroll="faq">Справка</button>
+      <button class="top-action" data-scroll="terminal">◎&nbsp; Найти рейс</button>
     </nav>
-    <span id="data-status" class="status">загрузка…</span>
+    <span id="data-status" class="status" aria-live="polite">загрузка…</span>
   </header>
 
   <main>
     <section id="top" class="hero section">
-      <div class="hero-grid"></div>
       <div class="hero-copy">
         <p class="eyebrow"><span class="live-dot"></span><span id="hero-source">UEX + SC Trade Tools</span></p>
         <h1>Торговые маршруты <em>Star Citizen</em></h1>
-        <p>Подбирает прибыльные рейсы для Stanton, Pyro и Nyx с учётом корабля, бюджета, supply/demand, свежести цен, контейнеров и межсистемных переходов.</p>
-        <div class="hero-actions"><button class="primary" data-scroll="terminal">Рассчитать рейс</button><button class="ghost" data-scroll="fleet">Выбрать корабль</button></div>
+        <p>Терминал подбирает прибыльные рейсы для Stanton, Pyro и Nyx под ваш корабль: учитывает трюм в SCU, бюджет в aUEC, supply/demand, свежесть цен, контейнеры и межсистемные переходы.</p>
+        <div class="hero-actions"><button class="primary" data-scroll="terminal">◎&nbsp; Рассчитать рейс</button><button class="ghost" data-scroll="fleet">♧&nbsp; Выбрать корабль</button></div>
       </div>
       <dl class="hero-stats">
-        <div><dt>Торговых точек</dt><dd id="stat-terminals">—</dd></div>
-        <div><dt>Товаров</dt><dd id="stat-commodities">—</dd></div>
-        <div><dt>Кораблей</dt><dd id="stat-ships">—</dd></div>
+        <div><dt>Торговых терминалов</dt><dd id="stat-terminals">—</dd></div>
+        <div><dt>Товаров в базе</dt><dd id="stat-commodities">—</dd></div>
+        <div><dt>Кораблей с трюмом</dt><dd id="stat-ships">—</dd></div>
       </dl>
     </section>
 
@@ -42,7 +46,7 @@
       <p class="eyebrow">Шаг 1</p>
       <h2>Настройте параметры полёта</h2>
       <div class="panel filter-panel">
-        <div class="panel-head"><div><h3>Панель расчёта рейса</h3><p>Найдено: <b id="found-count">0</b> · snapshot: <span id="snapshot-time">—</span></p></div><div class="row"><button id="refresh-data" class="small-btn">Обновить</button><button id="reset-filters" class="small-btn ghost">Сброс</button></div></div>
+        <div class="panel-head"><div><h3>Панель расчёта рейса</h3><p>Найдено маршрутов: <b id="found-count">0</b> · данные обновлены <span id="snapshot-time">—</span></p></div><div class="row"><button id="refresh-data" class="small-btn">Обновить</button><button id="reset-filters" class="small-btn ghost">Сброс</button></div></div>
         <div class="filter-grid">
           <div class="filter-col">
             <label>Корабль<select id="ship"><option value="custom">Свой объём трюма</option></select></label>
@@ -99,7 +103,7 @@
     </section>
   </main>
 
-  <footer><div class="brand"><span class="brand-mark">◇</span><span>Cargo<b>Nav</b></span></div><p>Некоммерческий фанатский инструмент. Не связан с Cloud Imperium Games / Roberts Space Industries.</p><p>Данные: <a href="https://uexcorp.space" target="_blank" rel="noreferrer">UEX</a> · <a href="https://sc-trade.tools" target="_blank" rel="noreferrer">SC Trade Tools</a>. Community-maintained data may differ from live servers.</p></footer>
+  <footer><div class="brand"><span class="brand-mark">◇</span><span class="brand-copy"><span class="brand-name">Cargo<b>Nav</b></span><span class="brand-sub">trade terminal</span></span></div><p>Некоммерческий фанатский инструмент. Не связан с Cloud Imperium Games / Roberts Space Industries.</p><p>Данные: <a href="https://uexcorp.space" target="_blank" rel="noreferrer">UEX</a> · <a href="https://sc-trade.tools" target="_blank" rel="noreferrer">SC Trade Tools</a>. Community-maintained data may differ from live servers.</p></footer>
 
   <dialog id="detail-dialog" class="detail-dialog">
     <div class="dialog-head"><div><p class="eyebrow">Разбор рейса</p><h2 id="detail-title">Маршрут</h2><p id="detail-subtitle" class="muted"></p></div><button id="detail-close" class="icon-btn" aria-label="Закрыть">×</button></div>
