@@ -20,8 +20,25 @@ export interface Terminal {
   aliases?: string[]
 }
 
+export interface ShipQuantumDrive {
+  source: string
+  sourceVersion?: string | null
+  driveUuid?: string | null
+  driveName?: string | null
+  driveClassName?: string | null
+  driveSize?: number | null
+  travelTime10GmSeconds?: number | null
+  quantumSpeedMps?: number | null
+  spoolUpTimeSeconds?: number | null
+  calibrationDelaySeconds?: number | null
+  cooldownTimeSeconds?: number | null
+  fuelConsumptionScuPerGm?: number | null
+  rangeMeters?: number | null
+}
+
 export interface Ship {
   id: number | string
+  uuid?: string
   name: string
   scu: number
   manufacturer?: string
@@ -29,6 +46,7 @@ export interface Ship {
   containerSizes?: number[]
   quantumFuel?: number
   hydrogenFuel?: number
+  quantumDrive?: ShipQuantumDrive
   isCargo?: boolean
   isGroundVehicle?: boolean
   isConcept?: boolean
