@@ -31,6 +31,13 @@ jobs:
           key: ${{ runner.os }}-uex-history-${{ github.run_id }}
           restore-keys: |
             ${{ runner.os }}-uex-history-
+      - name: Restore StarCitizenWiki ship quantum cache
+        uses: actions/cache@v4
+        with:
+          path: public/data/ship-quantum.json
+          key: ${{ runner.os }}-ship-quantum-${{ github.run_id }}
+          restore-keys: |
+            ${{ runner.os }}-ship-quantum-
       - name: Install dependencies
         run: npm install --no-audit --no-fund
       - name: Refresh UEX + SC Trade Tools snapshot
@@ -39,6 +46,10 @@ jobs:
           UEX_API_BASE: 'https://api.uexcorp.uk/2.0'
           SCTRADE_CROWD_MAX_PAGES: '20'
           UEX_DISTANCE_PAIRS: '55'
+          SCWIKI_API_BASE: 'https://api.star-citizen.wiki/api'
+          SCWIKI_QUANTUM_MAX_FETCHES: '180'
+          SCWIKI_QUANTUM_REFRESH_HOURS: '24'
+          SCWIKI_QUANTUM_CONCURRENCY: '6'
       - name: Refresh rolling UEX price history cache
         run: npm run build:history
         env:
