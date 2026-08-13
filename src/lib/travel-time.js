@@ -1,7 +1,6 @@
 export const TRAVEL_TIME_MODEL = Object.freeze({
-  // Calibrated against the UEX distance/ETA pairs supplied with the route table:
-  // 23 Gm ~= 3m19s, 81 Gm ~= 11m39s, 151 Gm ~= 21m44s.
-  // Keep this deliberately simple until we can use a documented per-ship timing source.
+  // Fallback only. Calibrated against UEX/SC Trade Tools distance/ETA examples
+  // when no selected ship or no stock-drive game profile is available.
   secondsPerGm: 8.635,
   groundEndpointSeconds: 0,
   jumpSeconds: 0,
@@ -23,27 +22,98 @@ function normalize(value = '') {
   return String(value).toLowerCase().replace(/[^a-z0-9а-я]+/g, ' ').trim()
 }
 
+function numberOrNull(value) {
+  const number = Number(value)
+  return Number.isFinite(number) ? number : null
+}
+
+function nonNegative(value, fallback = 0) {
+  const number = numberOrNull(value)
+  return number != null && number >= 0 ? number : fallback
+}
+
+function resolveOptions(optionsOrModel) {
+  if (optionsOrModel && typeof optionsOrModel === 'object' && 'secondsPerGm' in optionsOrModel && !('ship' in optionsOrModel)) {
+    return { ship: null, fallbackModel: optionsOrModel }
+  }
+  return {
+    ship: optionsOrModel?.ship || null,
+    fallbackModel: optionsOrModel?.fallbackModel || TRAVEL_TIME_MODEL,
+  }
+}
+
 export function isLikelyGroundTerminal(terminal = {}) {
   const text = normalize(`${terminal.name || ''} ${terminal.fullName || ''} ${terminal.location || ''}`)
   if (ORBITAL_HINTS.some((hint) => text.includes(normalize(hint)))) return false
   return GROUND_HINTS.some((hint) => text.includes(normalize(hint)))
 }
 
-export function estimateTravelTime(route, model = TRAVEL_TIME_MODEL) {
+/**
+ * Estimate the known minimum trip time.
+ *
+ * Preferred model: selected ship's stock QuantumDrive profile sourced from
+ * StarCitizenWiki/scunpacked. TravelTime10GM is scaled by UEX distance, while
+ * spool and calibration are kept as explicit components. Jump-point transit,
+ * atmosphere/docking, cargo loading/unloading and inventory wait time are not
+ * invented and therefore remain unknown overhead.
+ *
+ * Fallback: historical UEX/SC Trade Tools distance calibration used by beta v2.
+ */
+export function estimateTravelTime(route, optionsOrModel = {}) {
   if (route?.distanceGm == null || route?.distanceGm === '') return null
   const distanceGm = Number(route.distanceGm)
   if (!Number.isFinite(distanceGm) || distanceGm < 0) return null
+
+  const { ship, fallbackModel } = resolveOptions(optionsOrModel)
+  const drive = ship?.quantumDrive || null
+  const travelTime10GmSeconds = numberOrNull(drive?.travelTime10GmSeconds)
+  const hasGameTravel = travelTime10GmSeconds != null && travelTime10GmSeconds > 0
   const jumpCount = Math.max(0, Number(route?.path?.jumpCount) || 0)
   const groundEndpoints = [route?.from, route?.to].filter((terminal) => isLikelyGroundTerminal(terminal)).length
-  const cruiseSeconds = distanceGm * Number(model.secondsPerGm)
-  // The current beta intentionally does not invent loading, atmospheric or jump-point
-  // overhead. Those are exposed in the result for a future documented model.
-  const endpointSeconds = groundEndpoints * Number(model.groundEndpointSeconds)
-  const jumpSeconds = jumpCount * Number(model.jumpSeconds)
-  const totalSeconds = Math.max(Number(model.minimumSeconds), Math.round(cruiseSeconds + endpointSeconds + jumpSeconds))
+
+  const cruiseSeconds = hasGameTravel
+    ? (distanceGm / 10) * travelTime10GmSeconds
+    : distanceGm * Number(fallbackModel.secondsPerGm)
+  const spoolSeconds = hasGameTravel ? nonNegative(drive?.spoolUpTimeSeconds) : 0
+  const calibrationSeconds = hasGameTravel ? nonNegative(drive?.calibrationDelaySeconds) : 0
+  const cooldownSeconds = hasGameTravel ? nonNegative(drive?.cooldownTimeSeconds) : 0
+
+  // Intentionally zero until a documented source provides route-specific values.
+  const endpointSeconds = groundEndpoints * Number(fallbackModel.groundEndpointSeconds || 0)
+  const jumpSeconds = jumpCount * Number(fallbackModel.jumpSeconds || 0)
+  const knownSeconds = cruiseSeconds + spoolSeconds + calibrationSeconds + endpointSeconds + jumpSeconds
+  const totalSeconds = Math.max(Number(fallbackModel.minimumSeconds || 0), Math.round(knownSeconds))
   const profit = Number(route?.profit)
   const profitPerMinute = Number.isFinite(profit) && totalSeconds > 0 ? profit / (totalSeconds / 60) : null
-  return { totalSeconds, profitPerMinute, distanceGm, jumpCount, groundEndpoints, cruiseSeconds, endpointSeconds, jumpSeconds, model: 'uex-distance-beta-v2' }
+
+  const unknownSegments = ['погрузка/разгрузка', 'стыковка/атмосферный участок']
+  if (jumpCount > 0) unknownSegments.push('время прохождения jump point')
+
+  return {
+    totalSeconds,
+    knownSeconds,
+    profitPerMinute,
+    distanceGm,
+    jumpCount,
+    groundEndpoints,
+    cruiseSeconds,
+    spoolSeconds,
+    calibrationSeconds,
+    cooldownSeconds,
+    endpointSeconds,
+    jumpSeconds,
+    model: hasGameTravel ? 'game-data-quantum-v1' : 'uex-distance-beta-v2',
+    source: hasGameTravel ? String(drive?.source || 'StarCitizenWiki/scunpacked') : 'UEX/SC Trade Tools calibration',
+    sourceVersion: hasGameTravel ? (drive?.sourceVersion || null) : null,
+    shipName: ship?.name || null,
+    driveName: drive?.driveName || null,
+    travelTime10GmSeconds: hasGameTravel ? travelTime10GmSeconds : null,
+    quantumSpeedMps: numberOrNull(drive?.quantumSpeedMps),
+    fuelConsumptionScuPerGm: numberOrNull(drive?.fuelConsumptionScuPerGm),
+    isGameData: hasGameTravel,
+    isLowerBound: true,
+    unknownSegments,
+  }
 }
 
 export function formatTravelDuration(totalSeconds) {
