@@ -1,6 +1,6 @@
 import test from 'node:test'
 import assert from 'node:assert/strict'
-import { estimateTravelTime, formatTravelDuration, isLikelyGroundTerminal } from '../src/lib/travel-time.js'
+import { estimateTravelTime, formatTravelDuration, formatTravelDurationRange, isLikelyGroundTerminal } from '../src/lib/travel-time.js'
 
 const stockShip = {
   name: 'Test Freighter',
@@ -34,6 +34,7 @@ test('fallback ETA retains supplied UEX distance calibration', () => {
     const result = estimateTravelTime({ distanceGm, profit: 1000, from: {}, to: {}, path: { jumpCount: 0 } })
     assert.ok(result)
     assert.equal(result.isGameData, false)
+    assert.equal(result.hasTravelRange, false)
     assert.ok(Math.abs(result.totalSeconds - expectedSeconds) <= 1, `${distanceGm} Gm => ${result.totalSeconds}s, expected ~${expectedSeconds}s`)
   }
 })
@@ -47,6 +48,8 @@ test('selected ship uses TravelTime10GM plus spool and calibration from game dat
   assert.equal(result.calibrationSeconds, 1.5)
   assert.equal(result.cooldownSeconds, 22.86)
   assert.equal(result.totalSeconds, 120)
+  assert.equal(result.totalSecondsMin, 120)
+  assert.equal(result.totalSecondsMax, 120)
   assert.equal(result.driveName, 'Test QD')
   assert.equal(result.sourceVersion, '4.8.2-LIVE.test')
 })
@@ -64,6 +67,8 @@ test('profit per minute from game data is an upper bound because route overhead 
   assert.ok(result)
   assert.equal(result.totalSeconds, 120)
   assert.equal(result.profitPerMinute, 50_000)
+  assert.equal(result.profitPerMinuteMin, 50_000)
+  assert.equal(result.profitPerMinuteMax, 50_000)
   assert.equal(result.isLowerBound, true)
   assert.ok(result.unknownSegments.includes('погрузка/разгрузка'))
 })
@@ -76,16 +81,55 @@ test('terminal classifier remains metadata only until documented route overhead 
   assert.equal(ground.totalSeconds, orbital.totalSeconds)
 })
 
-test('jump point count is explicit unknown overhead, not an invented fixed timer', () => {
+test('one live jump adds a 30-180 second operational range instead of a fixed timer', () => {
   const same = estimateTravelTime({ distanceGm: 50, profit: 1000, from: {}, to: {}, path: { jumpCount: 0 } }, { ship: stockShip })
   const jump = estimateTravelTime({ distanceGm: 50, profit: 1000, from: {}, to: {}, path: { jumpCount: 1 } }, { ship: stockShip })
-  assert.equal(jump.totalSeconds, same.totalSeconds)
+  assert.ok(same)
+  assert.ok(jump)
+  assert.equal(same.totalSeconds, 288)
   assert.equal(jump.jumpCount, 1)
-  assert.equal(jump.jumpSeconds, 0)
-  assert.ok(jump.unknownSegments.includes('время прохождения jump point'))
+  assert.equal(jump.jumpSecondsMin, 30)
+  assert.equal(jump.jumpSecondsMax, 180)
+  assert.equal(jump.totalSecondsMin, 318)
+  assert.equal(jump.totalSecondsMax, 468)
+  assert.equal(jump.totalSeconds, jump.totalSecondsMin)
+  assert.equal(jump.hasTravelRange, true)
+  assert.ok(jump.profitPerMinuteMin < jump.profitPerMinuteMax)
+  assert.equal(jump.unknownSegments.includes('время прохождения jump point'), false)
+})
+
+test('multiple jump tunnels accumulate their uncertainty independently', () => {
+  const result = estimateTravelTime({ distanceGm: 10, profit: 10_000, from: {}, to: {}, path: { jumpCount: 2 } }, { ship: stockShip })
+  assert.ok(result)
+  assert.equal(result.jumpSecondsMin, 60)
+  assert.equal(result.jumpSecondsMax, 360)
+  assert.equal(result.totalSecondsMin, 124)
+  assert.equal(result.totalSecondsMax, 424)
+})
+
+test('topology edge timing metadata overrides the fallback range', () => {
+  const result = estimateTravelTime({
+    distanceGm: 50,
+    profit: 1000,
+    from: {},
+    to: {},
+    path: {
+      jumpCount: 1,
+      jumps: [{ jumpTunnelMinSeconds: 45, jumpTunnelMaxSeconds: 90, jumpTunnelTimingSource: 'test-edge' }],
+    },
+  }, { ship: stockShip })
+  assert.ok(result)
+  assert.equal(result.jumpSecondsMin, 45)
+  assert.equal(result.jumpSecondsMax, 90)
+  assert.equal(result.totalSecondsMin, 333)
+  assert.equal(result.totalSecondsMax, 378)
+  assert.equal(result.jumpTimingSource, 'test-edge')
+  assert.equal(result.jumpTimingFallbackCount, 0)
 })
 
 test('duration formatter is readable', () => {
   assert.equal(formatTravelDuration(699), '11 мин 39 с')
   assert.equal(formatTravelDuration(3720), '1 ч 2 мин')
+  assert.equal(formatTravelDurationRange(699, 879), '11 мин 39 с–14 мин 39 с')
+  assert.equal(formatTravelDurationRange(120, 120), '2 мин 0 с')
 })

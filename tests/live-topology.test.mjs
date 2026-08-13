@@ -91,3 +91,14 @@ test('jump tunnel timing is represented as a non-deterministic operational range
   assert.equal(JUMP_TUNNEL_OBSERVED_RANGE.maxSecondsPerJump, 180)
   assert.equal(JUMP_TUNNEL_OBSERVED_RANGE.deterministic, false)
 })
+
+test('every live route edge carries the jump tunnel range into the runtime snapshot graph', () => {
+  const points = makeLiveJumpPoints(recordsForSpecs())
+  assert.equal(points.length, 3)
+  for (const edge of points) {
+    assert.equal(edge.jumpTunnelMinSeconds, 30)
+    assert.equal(edge.jumpTunnelMaxSeconds, 180)
+    assert.equal(edge.jumpTunnelDeterministic, false)
+    assert.equal(edge.jumpTunnelTimingSource, 'operational-observation')
+  }
+})
