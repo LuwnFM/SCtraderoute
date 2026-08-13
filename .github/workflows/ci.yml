@@ -24,6 +24,15 @@ jobs:
           UEX_API_BASE: 'https://api.uexcorp.uk/2.0'
           SCTRADE_CROWD_MAX_PAGES: '2'
           UEX_DISTANCE_PAIRS: '5'
+          SCWIKI_API_BASE: 'https://api.star-citizen.wiki/api'
+          SCWIKI_QUANTUM_MAX_FETCHES: '12'
+          SCWIKI_QUANTUM_REFRESH_HOURS: '24'
+          SCWIKI_QUANTUM_CONCURRENCY: '4'
+      - name: Verify current LIVE gateway topology
+        run: node scripts/build-topology.mjs
+        env:
+          SCWIKI_API_BASE: 'https://api.star-citizen.wiki/api'
+          SCWIKI_TOPOLOGY_STRICT: '1'
       - name: Verify UEX history aggregation
         run: |
           npm run build:history
