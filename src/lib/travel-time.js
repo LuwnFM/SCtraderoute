@@ -7,6 +7,13 @@ export const TRAVEL_TIME_MODEL = Object.freeze({
   minimumSeconds: 30,
 })
 
+export const JUMP_TUNNEL_FALLBACK_RANGE = Object.freeze({
+  minSecondsPerJump: 30,
+  maxSecondsPerJump: 180,
+  deterministic: false,
+  source: 'operational-observation',
+})
+
 const GROUND_HINTS = [
   'mining area', 'mining facility', 'hdms-', 'rayari ', 'shubin ', 'outpost',
   'scrap', 'salvage', 'yard', 'fallow field', 'shepherd', 'rustville',
@@ -42,6 +49,42 @@ function resolveOptions(optionsOrModel) {
   }
 }
 
+function resolveJumpTunnelRange(route, jumpCount) {
+  if (!(jumpCount > 0)) {
+    return { minSeconds: 0, maxSeconds: 0, source: null, fallbackCount: 0 }
+  }
+
+  const jumps = Array.isArray(route?.path?.jumps) ? route.path.jumps : []
+  let minSeconds = 0
+  let maxSeconds = 0
+  let fallbackCount = 0
+  const sources = new Set()
+
+  for (let index = 0; index < jumpCount; index += 1) {
+    const edge = jumps[index]
+    const edgeMin = numberOrNull(edge?.jumpTunnelMinSeconds)
+    const edgeMax = numberOrNull(edge?.jumpTunnelMaxSeconds)
+    if (edgeMin != null && edgeMax != null && edgeMin >= 0 && edgeMax >= edgeMin) {
+      minSeconds += edgeMin
+      maxSeconds += edgeMax
+      if (edge?.jumpTunnelTimingSource) sources.add(String(edge.jumpTunnelTimingSource))
+      continue
+    }
+
+    minSeconds += JUMP_TUNNEL_FALLBACK_RANGE.minSecondsPerJump
+    maxSeconds += JUMP_TUNNEL_FALLBACK_RANGE.maxSecondsPerJump
+    fallbackCount += 1
+    sources.add(JUMP_TUNNEL_FALLBACK_RANGE.source)
+  }
+
+  return {
+    minSeconds,
+    maxSeconds,
+    source: [...sources].join(' + ') || JUMP_TUNNEL_FALLBACK_RANGE.source,
+    fallbackCount,
+  }
+}
+
 export function isLikelyGroundTerminal(terminal = {}) {
   const text = normalize(`${terminal.name || ''} ${terminal.fullName || ''} ${terminal.location || ''}`)
   if (ORBITAL_HINTS.some((hint) => text.includes(normalize(hint)))) return false
@@ -49,15 +92,23 @@ export function isLikelyGroundTerminal(terminal = {}) {
 }
 
 /**
- * Estimate the known minimum trip time.
+ * Estimate the known flight-time range.
  *
  * Preferred model: selected ship's stock QuantumDrive profile sourced from
  * StarCitizenWiki/scunpacked. TravelTime10GM is scaled by UEX distance, while
- * spool and calibration are kept as explicit components. Jump-point transit,
- * atmosphere/docking, cargo loading/unloading and inventory wait time are not
- * invented and therefore remain unknown overhead.
+ * spool and calibration are kept as explicit components.
  *
- * Fallback: historical UEX/SC Trade Tools distance calibration used by beta v2.
+ * Current LIVE jump tunnels are non-deterministic. CargoNav therefore adds the
+ * observed operational range carried by the LIVE topology (30-180 seconds per
+ * jump at the moment) instead of inventing a fixed tunnel duration. If an older
+ * snapshot lacks edge timing metadata, the same observed range is used as an
+ * explicit fallback.
+ *
+ * Atmosphere/docking, cargo loading/unloading and inventory wait time are not
+ * invented and remain unknown overhead above the displayed flight range.
+ *
+ * Fallback quantum model: historical UEX/SC Trade Tools distance calibration
+ * used by beta v2 when no selected stock-drive game profile is available.
  */
 export function estimateTravelTime(route, optionsOrModel = {}) {
   if (route?.distanceGm == null || route?.distanceGm === '') return null
@@ -80,19 +131,34 @@ export function estimateTravelTime(route, optionsOrModel = {}) {
 
   // Intentionally zero until a documented source provides route-specific values.
   const endpointSeconds = groundEndpoints * Number(fallbackModel.groundEndpointSeconds || 0)
-  const jumpSeconds = jumpCount * Number(fallbackModel.jumpSeconds || 0)
-  const knownSeconds = cruiseSeconds + spoolSeconds + calibrationSeconds + endpointSeconds + jumpSeconds
-  const totalSeconds = Math.max(Number(fallbackModel.minimumSeconds || 0), Math.round(knownSeconds))
+  const jumpRange = resolveJumpTunnelRange(route, jumpCount)
+  const jumpSecondsMin = jumpRange.minSeconds
+  const jumpSecondsMax = jumpRange.maxSeconds
+
+  const baseKnownSeconds = cruiseSeconds + spoolSeconds + calibrationSeconds + endpointSeconds
+  const knownSecondsMin = baseKnownSeconds + jumpSecondsMin
+  const knownSecondsMax = baseKnownSeconds + jumpSecondsMax
+  const totalSecondsMin = Math.max(Number(fallbackModel.minimumSeconds || 0), Math.round(knownSecondsMin))
+  const totalSecondsMax = Math.max(totalSecondsMin, Math.max(Number(fallbackModel.minimumSeconds || 0), Math.round(knownSecondsMax)))
   const profit = Number(route?.profit)
-  const profitPerMinute = Number.isFinite(profit) && totalSeconds > 0 ? profit / (totalSeconds / 60) : null
+  const profitPerMinuteMax = Number.isFinite(profit) && totalSecondsMin > 0 ? profit / (totalSecondsMin / 60) : null
+  const profitPerMinuteMin = Number.isFinite(profit) && totalSecondsMax > 0 ? profit / (totalSecondsMax / 60) : null
 
   const unknownSegments = ['погрузка/разгрузка', 'стыковка/атмосферный участок']
-  if (jumpCount > 0) unknownSegments.push('время прохождения jump point')
 
   return {
-    totalSeconds,
-    knownSeconds,
-    profitPerMinute,
+    // Legacy scalar fields remain the optimistic edge of the known range so
+    // existing callers do not silently become slower. New UI should use Min/Max.
+    totalSeconds: totalSecondsMin,
+    knownSeconds: knownSecondsMin,
+    profitPerMinute: profitPerMinuteMax,
+    totalSecondsMin,
+    totalSecondsMax,
+    knownSecondsMin,
+    knownSecondsMax,
+    profitPerMinuteMin,
+    profitPerMinuteMax,
+    hasTravelRange: totalSecondsMax > totalSecondsMin,
     distanceGm,
     jumpCount,
     groundEndpoints,
@@ -101,8 +167,12 @@ export function estimateTravelTime(route, optionsOrModel = {}) {
     calibrationSeconds,
     cooldownSeconds,
     endpointSeconds,
-    jumpSeconds,
-    model: hasGameTravel ? 'game-data-quantum-v1' : 'uex-distance-beta-v2',
+    jumpSeconds: jumpSecondsMin,
+    jumpSecondsMin,
+    jumpSecondsMax,
+    jumpTimingSource: jumpRange.source,
+    jumpTimingFallbackCount: jumpRange.fallbackCount,
+    model: hasGameTravel ? 'game-data-quantum-v2-range' : 'uex-distance-beta-v3-range',
     source: hasGameTravel ? String(drive?.source || 'StarCitizenWiki/scunpacked') : 'UEX/SC Trade Tools calibration',
     sourceVersion: hasGameTravel ? (drive?.sourceVersion || null) : null,
     shipName: ship?.name || null,
@@ -125,4 +195,13 @@ export function formatTravelDuration(totalSeconds) {
   if (hours > 0) return `${hours} ч ${minutes} мин`
   if (minutes > 0) return `${minutes} мин ${rest} с`
   return `${rest} с`
+}
+
+export function formatTravelDurationRange(minSeconds, maxSeconds) {
+  if (!Number.isFinite(Number(minSeconds)) || !Number.isFinite(Number(maxSeconds))) return 'нет данных'
+  const min = Math.max(0, Number(minSeconds))
+  const max = Math.max(min, Number(maxSeconds))
+  const left = formatTravelDuration(min)
+  const right = formatTravelDuration(max)
+  return left === right ? left : `${left}–${right}`
 }
