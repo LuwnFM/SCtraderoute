@@ -95,7 +95,7 @@ function normalizeUex(commoditiesRaw, terminalsRaw, pricesRaw, vehiclesRaw, jump
   const ships = vehiclesRaw
     .filter((v) => Number(v.scu || 0) > 0)
     .map((v) => ({
-      id: Number(v.id), uuid: String(v.uuid || '').trim() || undefined, name: String(v.name_full || v.name || ''), scu: Number(v.scu), manufacturer: String(v.company_name || ''), crew: String(v.crew || ''),
+      id: Number(v.id), uuid: String(v.uuid || '').trim() || undefined, shortName: String(v.name || v.name_full || '').trim(), slug: String(v.slug || '').trim(), name: String(v.name_full || v.name || ''), scu: Number(v.scu), manufacturer: String(v.company_name || ''), crew: String(v.crew || ''),
       containerSizes: compactUniqueNumbers(v.container_sizes), quantumFuel: Number(v.fuel_quantum || 0), hydrogenFuel: Number(v.fuel_hydrogen || 0),
       isCargo: Number(v.is_cargo) === 1, isGroundVehicle: Number(v.is_ground_vehicle) === 1, isConcept: Number(v.is_concept) === 1,
       isSpaceship: Number(v.is_spaceship ?? 1) === 1, isQuantumCapable: Number(v.is_quantum_capable ?? 1) === 1,
@@ -195,27 +195,63 @@ async function mapLimited(items, concurrency, worker) {
   return result
 }
 
+function shipQuantumCacheKey(ship) {
+  return ship.uuid || `uex:${ship.id}`
+}
+
+function shipWikiIdentifiers(ship) {
+  const values = [ship.uuid, ship.shortName, ship.name, ship.slug]
+    .map((value) => String(value || '').trim())
+    .filter(Boolean)
+  return [...new Set(values)]
+}
+
+async function fetchShipQuantumProfile(ship) {
+  const identifiers = shipWikiIdentifiers(ship)
+  let lastError = null
+  let bestEmpty = null
+  for (const identifier of identifiers) {
+    try {
+      const json = await fetchJson(`${SCWIKI}/vehicles/${encodeURIComponent(identifier)}`, {}, 20_000)
+      const vehicle = json?.data || json
+      const profile = extractShipQuantumProfile(vehicle)
+      if (profile) return { profile, vehicle, identifier }
+      bestEmpty ||= { profile: null, vehicle, identifier }
+    } catch (error) {
+      lastError = error
+    }
+  }
+  if (bestEmpty) return bestEmpty
+  throw lastError || new Error('No StarCitizenWiki vehicle identifier resolved')
+}
+
 async function enrichShipQuantum(ships) {
   if (!SHIP_QUANTUM_MAX_FETCHES || !ships.length) return ships
   const cache = await readJsonFile(SHIP_QUANTUM_CACHE, { meta: {}, profiles: {} }) || { meta: {}, profiles: {} }
   if (!cache.profiles || typeof cache.profiles !== 'object') cache.profiles = {}
   const now = Date.now()
-  const candidates = ships.filter((ship) => ship.uuid && ship.isSpaceship !== false && ship.isGroundVehicle !== true && ship.isConcept !== true && ship.isQuantumCapable !== false)
-  const stale = candidates.filter((ship) => !isQuantumCacheFresh(cache.profiles[ship.uuid], now, SHIP_QUANTUM_REFRESH_HOURS)).slice(0, SHIP_QUANTUM_MAX_FETCHES)
+  const candidates = ships.filter((ship) => ship.isSpaceship !== false && ship.isGroundVehicle !== true && ship.isConcept !== true && ship.isQuantumCapable !== false && shipWikiIdentifiers(ship).length)
+  const stale = candidates.filter((ship) => !isQuantumCacheFresh(cache.profiles[shipQuantumCacheKey(ship)], now, SHIP_QUANTUM_REFRESH_HOURS)).slice(0, SHIP_QUANTUM_MAX_FETCHES)
   let failures = 0
   let fetched = 0
+  let empty = 0
 
   await mapLimited(stale, SHIP_QUANTUM_CONCURRENCY, async (ship) => {
+    const cacheKey = shipQuantumCacheKey(ship)
     try {
-      const url = `${SCWIKI}/vehicles/${encodeURIComponent(ship.uuid)}`
-      const json = await fetchJson(url, {}, 20_000)
-      const vehicle = json?.data || json
-      const profile = extractShipQuantumProfile(vehicle)
-      cache.profiles[ship.uuid] = { fetchedAt: nowIso(), profile, vehicleName: vehicle?.name || ship.name, sourceVersion: profile?.sourceVersion || vehicle?.version || null }
-      fetched += 1
+      const resolved = await fetchShipQuantumProfile(ship)
+      cache.profiles[cacheKey] = {
+        fetchedAt: nowIso(),
+        profile: resolved.profile,
+        vehicleName: resolved.vehicle?.name || ship.name,
+        sourceVersion: resolved.profile?.sourceVersion || resolved.vehicle?.version || null,
+        resolvedIdentifier: resolved.identifier,
+      }
+      if (resolved.profile) fetched += 1
+      else empty += 1
     } catch (error) {
       failures += 1
-      if (!cache.profiles[ship.uuid]) cache.profiles[ship.uuid] = { fetchedAt: new Date(0).toISOString(), profile: null, error: error instanceof Error ? error.message : String(error) }
+      cache.profiles[cacheKey] = { fetchedAt: new Date(0).toISOString(), profile: null, vehicleName: ship.name, error: error instanceof Error ? error.message : String(error) }
     }
   })
 
@@ -224,7 +260,7 @@ async function enrichShipQuantum(ships) {
   await fs.writeFile(SHIP_QUANTUM_CACHE, JSON.stringify(cache))
 
   const enriched = ships.map((ship) => {
-    const profile = ship.uuid ? cache.profiles?.[ship.uuid]?.profile : null
+    const profile = cache.profiles?.[shipQuantumCacheKey(ship)]?.profile
     return profile ? { ...ship, quantumDrive: profile } : ship
   })
   const withExactTravel = enriched.filter((ship) => Number(ship.quantumDrive?.travelTime10GmSeconds) > 0).length
@@ -232,7 +268,7 @@ async function enrichShipQuantum(ships) {
   report.push({
     name: 'StarCitizenWiki game data',
     ok: withAnyProfile > 0,
-    note: `${withAnyProfile}/${candidates.length} кораблей с QD-профилем · ${withExactTravel} с TravelTime10GM · обновлено ${fetched}${failures ? ` · ошибок ${failures}` : ''}`,
+    note: `${withAnyProfile}/${candidates.length} кораблей с QD-профилем · ${withExactTravel} с TravelTime10GM · новых/обновлённых ${fetched}${empty ? ` · без QD ${empty}` : ''}${failures ? ` · ошибок ${failures}` : ''}`,
   })
   return enriched
 }
