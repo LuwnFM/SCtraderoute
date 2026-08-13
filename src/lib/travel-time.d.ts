@@ -2,6 +2,11 @@ import type { Ship } from './data'
 
 export interface TravelTimeTerminal { name?: string; fullName?: string; location?: string }
 export interface TravelTimeJump {
+  from?: string
+  to?: string
+  fromOrbit?: string
+  toOrbit?: string
+  source?: string
   jumpTunnelMinSeconds?: number | null
   jumpTunnelMaxSeconds?: number | null
   jumpTunnelDeterministic?: boolean | null
