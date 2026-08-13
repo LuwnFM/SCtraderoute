@@ -68,7 +68,7 @@ export default function Index() {
       </div></section>
       <section id="routes" className="scroll-mt-20 border-t border-border py-14 sm:py-20"><div className="mx-auto max-w-7xl px-4 sm:px-6">
         <div className="mb-8 flex flex-wrap items-end justify-between gap-3"><div><p className="font-mono text-[11px] uppercase tracking-[0.24em] text-primary">Шаг 2</p><h2 className="mt-2 font-display text-3xl font-semibold uppercase tracking-tight sm:text-4xl">Прибыльные маршруты</h2></div><div className="flex flex-col items-end gap-3"><p className="flex items-center gap-2 font-mono text-xs text-muted-foreground"><Icon name="Info" size={14} className="text-primary" />Расчёт на {formatNumber(filters.capacity)} SCU{filters.budget > 0 ? ` и ${formatNumber(filters.budget)} aUEC` : ' без лимита бюджета'}</p><RouteModeToggle mode={mode} onMode={setMode} maxStops={maxStops} onStops={setMaxStops} /></div></div>
-        {mode === 'single' ? <RouteList routes={routes} loading={loading} error={error} onRetry={refresh} favorites={favorites} onToggleFavorite={toggleFavorite} /> : <MultiStopList routes={multiRoutes} />}
+        {mode === 'single' ? <RouteList routes={routes} ship={chosenShip} loading={loading} error={error} onRetry={refresh} favorites={favorites} onToggleFavorite={toggleFavorite} /> : <MultiStopList routes={multiRoutes} />}
       </div></section>
       <FleetSection ships={ships} loading={loading} selectedShipId={selectedShipId} onPick={pickShip} />
       <FaqSection />
