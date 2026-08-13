@@ -50,6 +50,10 @@ jobs:
           SCWIKI_QUANTUM_MAX_FETCHES: '180'
           SCWIKI_QUANTUM_REFRESH_HOURS: '24'
           SCWIKI_QUANTUM_CONCURRENCY: '6'
+      - name: Build current LIVE gateway topology
+        run: node scripts/build-topology.mjs
+        env:
+          SCWIKI_API_BASE: 'https://api.star-citizen.wiki/api'
       - name: Refresh rolling UEX price history cache
         run: npm run build:history
         env:
