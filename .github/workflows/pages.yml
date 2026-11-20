@@ -13,7 +13,7 @@ permissions:
   id-token: write
 
 concurrency:
-  group: pages
+  group: cargonav-deploy-recovery-20261121
   cancel-in-progress: true
 
 jobs:
