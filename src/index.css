@@ -13,6 +13,8 @@
 
 @layer base {
   * { @apply border-border; }
+  html, body, #root { max-width: 100%; }
+  html, body, #root { overflow-x: clip; }
   body { @apply bg-background text-foreground; font-family: "IBM Plex Mono", "Courier New", monospace; font-feature-settings: "tnum" 1; }
   h1,h2,h3,h4 { font-family: "Oswald", "IBM Plex Mono", sans-serif; letter-spacing: 0.02em; }
   :focus-visible { outline: 2px solid hsl(var(--ring)); outline-offset: 2px; }
